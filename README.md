@@ -16,6 +16,8 @@
 1. 克隆代码仓库：
 ```bash
 git clone https://github.com/wcfbxw/TempMail-Panel.git
-cd TempMail-Panel`
-chmod +x install.sh`
-./install.sh`
+cd TempMail-Panel```
+```bash
+chmod +x install.sh```
+```bash
+./install.sh```

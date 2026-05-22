@@ -17,3 +17,5 @@
 ```bash
 git clone https://github.com/wcfbxw/TempMail-Panel.git
 cd TempMail-Panel
+chmod +x install.sh
+./install.sh

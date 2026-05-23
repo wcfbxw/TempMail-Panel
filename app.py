@@ -17,21 +17,34 @@ app = FastAPI()
 DB_FILE = "myserver_mail.db"
 
 # ==========================================
-# 核心优化：动态读取系统环境变量，彻底告别占位符
+# 核心：动态读取系统环境变量
 # ==========================================
 ENV_FILE = "/etc/lightningmail.env"
-ENV_CONFIG = {}
-if os.path.exists(ENV_FILE):
-    with open(ENV_FILE, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if "=" in line and not line.startswith("#"):
-                k, v = line.split("=", 1)
-                ENV_CONFIG[k.strip()] = v.strip(' "\'')
 
-# 获取外部设定的 POP3 端口，若不存在则默认回退到安全的 110
-POP3_PORT = int(ENV_CONFIG.get("LM_PORT", 110))
-# ==========================================
+def get_env_config():
+    config = {}
+    if os.path.exists(ENV_FILE):
+        with open(ENV_FILE, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    config[k.strip()] = v.strip(' "\'')
+    return config
+
+def save_env_config(key, value):
+    config = get_env_config()
+    config[key] = str(value)
+    try:
+        with open(ENV_FILE, "w", encoding="utf-8") as f:
+            for k, v in config.items():
+                f.write(f'{k}="{v}"\n')
+    except Exception as e:
+        pass
+
+_current_env = get_env_config()
+POP3_PORT = int(_current_env.get("LM_PORT", 110))
+POP3_HOST = _current_env.get("LM_POP_HOST", "127.0.0.1")
 
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
@@ -155,6 +168,28 @@ class POP3ConfigModel(BaseModel): domain_suffix: str; display_name: str; pop3_se
 class AccountModel(BaseModel): email: str; password: str; remark: Optional[str] = ""
 class SyncRequest(BaseModel): accounts: List[AccountModel]
 class UnlinkRequest(BaseModel): email: str
+class SysConfigModel(BaseModel): pop_host: str; pop_port: int
+
+# ==========================================
+# 新增系统配置同步接口
+# ==========================================
+@app.get("/api/system_config")
+def get_sys_config():
+    env_conf = get_env_config()
+    return {
+        "pop_host": env_conf.get("LM_POP_HOST", "127.0.0.1"),
+        "pop_port": int(env_conf.get("LM_PORT", 110))
+    }
+
+@app.post("/api/admin/system_config")
+def update_sys_config(config: SysConfigModel, authorization: str = Header(None)):
+    global POP3_HOST, POP3_PORT
+    POP3_HOST = config.pop_host
+    POP3_PORT = config.pop_port
+    save_env_config("LM_POP_HOST", POP3_HOST)
+    save_env_config("LM_PORT", POP3_PORT)
+    return {"status": "success"}
+# ==========================================
 
 @app.post("/api/account/create")
 def create_single_account(acc: AccountModel, authorization: str = Header(None)):
@@ -242,8 +277,10 @@ def login_and_fetch(req: LoginRequest):
     if "@" not in email: raise HTTPException(status_code=400, detail="邮箱格式错误")
     
     try:
-        # 使用动态加载的全局 POP3_PORT 变量
-        pop = poplib.POP3('127.0.0.1', POP3_PORT, timeout=5)
+        # 使用动态拉取的最新端口连接本地 POP3
+        env_conf = get_env_config()
+        current_port = int(env_conf.get("LM_PORT", 110))
+        pop = poplib.POP3('127.0.0.1', current_port, timeout=5)
         pop.user(email)
         pop.pass_(req.password)
         
@@ -303,11 +340,8 @@ async def startup_event():
     smtp_handler = LocalMailHandler()
     smtp_controller = Controller(smtp_handler, hostname='0.0.0.0', port=25)
     smtp_controller.start()
-    
-    # 使用动态加载的全局 POP3_PORT 变量
     await asyncio.start_server(pop3_handle_client, '0.0.0.0', POP3_PORT)
 
 if __name__ == "__main__":
     import uvicorn
-    # 强制在 127.0.0.1 运行，只接受 Nginx 代理，完美避开公网骚扰
     uvicorn.run(app, host="127.0.0.1", port=8888)

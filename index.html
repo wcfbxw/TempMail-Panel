@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>{{REPLACE_TITLE}} - 极速接码平台</title>
+    <title>闪电邮 - 极速接码平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
@@ -44,13 +44,14 @@
 
         <div class="bg-[#141414] border-b border-[#262626] p-4 flex justify-between items-center shrink-0">
             <div class="flex items-center gap-4">
-                <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">{{REPLACE_TITLE}}</h1>
+                <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">闪电邮</h1>
                 
                 <div class="flex items-center text-xs bg-[#1f1f1f] border border-[#333] rounded overflow-hidden focus-within:border-blue-500 transition-colors">
                     <span class="text-gray-500 px-2 py-1 bg-[#141414] border-r border-[#333]">POP3:</span>
-                    <input v-model="publicPopServer" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-40 outline-none focus:text-white font-mono" placeholder="域名">
+                    <input v-model="publicPopServer" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-40 outline-none focus:text-white font-mono" placeholder="读取中...">
                     <span class="text-gray-500 px-2 py-1 bg-[#141414] border-l border-r border-[#333]">端口:</span>
-                    <input v-model="publicPopPort" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-12 outline-none focus:text-white font-mono text-center" placeholder="110">
+                    <input v-model="publicPopPort" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-12 outline-none focus:text-white font-mono text-center" placeholder="...">
+                    <button @click="saveSystemConfig" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 font-bold transition border-l border-[#333]">确认修改</button>
                 </div>
             </div>
             
@@ -78,13 +79,14 @@
                     </div>
 
                     <div v-if="isAddingDomain" class="flex gap-2">
-                        <input v-model="newDomainInput" type="text" placeholder="输入域名并回车" @keyup.enter="addNewDomain" class="input-dark rounded px-3 py-1.5 text-sm flex-1">
+                        <input v-model="newDomainInput" type="text" placeholder="输入邮箱后缀 (例: a.com)" @keyup.enter="addNewDomain" class="input-dark rounded px-3 py-1.5 text-sm flex-1">
                         <button @click="addNewDomain" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-bold">+</button>
                     </div>
 
                     <div v-else class="flex gap-2">
                         <input v-model="prefix" type="text" placeholder="自定义前缀 (留空随机)" class="input-dark rounded px-3 py-2 text-sm flex-1 w-1/2">
                         <select v-model="selectedDomain" class="input-dark rounded px-2 py-2 text-sm font-mono outline-none w-1/2 cursor-pointer">
+                            <option v-if="domains.length === 0" value="" disabled>暂无域名</option>
                             <option v-for="dom in domains" :key="dom" :value="dom">@{{ dom }}</option>
                         </select>
                     </div>
@@ -196,11 +198,12 @@
 
         createApp({
             setup() {
-                const publicPopServer = ref(localStorage.getItem('publicPopServer') || '{{REPLACE_DOMAIN}}');
-                const publicPopPort = ref(localStorage.getItem('publicPopPort') || '{{REPLACE_PORT}}');
+                const publicPopServer = ref('');
+                const publicPopPort = ref('');
                 
-                const domains = ref(JSON.parse(localStorage.getItem('savedDomains') || '["{{REPLACE_DOMAIN}}"]'));
-                const selectedDomain = ref(domains.value[0]);
+                const domains = ref(JSON.parse(localStorage.getItem('savedDomains') || '[]'));
+                const selectedDomain = ref(domains.value.length > 0 ? domains.value[0] : '');
+                
                 const isAddingDomain = ref(false);
                 const newDomainInput = ref('');
 
@@ -219,9 +222,35 @@
                 
                 const readingMail = ref(null);
 
-                watch(publicPopServer, (val) => localStorage.setItem('publicPopServer', val));
-                watch(publicPopPort, (val) => localStorage.setItem('publicPopPort', val));
                 watch(accounts, (val) => localStorage.setItem('savedAccounts', JSON.stringify(val)), { deep: true });
+
+                // ========== 核心新增逻辑：对接后端配置接口 ==========
+                const loadSystemConfig = async () => {
+                    try {
+                        const res = await fetch('/api/system_config');
+                        if (res.ok) {
+                            const data = await res.json();
+                            publicPopServer.value = data.pop_host;
+                            publicPopPort.value = data.pop_port;
+                        }
+                    } catch (e) { console.error("配置拉取失败"); }
+                };
+
+                const saveSystemConfig = async () => {
+                    try {
+                        const res = await fetch('/api/admin/system_config', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pop_host: publicPopServer.value, pop_port: parseInt(publicPopPort.value) || 110 })
+                        });
+                        if (res.ok) {
+                            alert("✅ 后端系统配置已同步！\n\n注意：若您修改了端口号，为使底层监听彻底生效，请登录服务器终端执行重启命令。");
+                        } else {
+                            alert("❌ 保存失败，请检查网络。");
+                        }
+                    } catch (e) { alert("网络错误"); }
+                };
+                // ===============================================
 
                 const handleAuth = async () => {
                     if(!authForm.value.username || !authForm.value.password) return alert("请填写完整");
@@ -284,13 +313,22 @@
                     const newDom = newDomainInput.value.trim().toLowerCase();
                     if (!newDom) return;
                     await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain_suffix: newDom, display_name: '', pop3_server: '', pop3_port: 110, use_ssl: false, is_active: true }) });
-                    if (!domains.value.includes(newDom)) { domains.value.push(newDom); localStorage.setItem('savedDomains', JSON.stringify(domains.value)); }
+                    if (!domains.value.includes(newDom)) { 
+                        domains.value.push(newDom); 
+                        localStorage.setItem('savedDomains', JSON.stringify(domains.value)); 
+                    }
                     selectedDomain.value = newDom;
                     isAddingDomain.value = false;
                     newDomainInput.value = '';
                 };
 
                 const createAccount = async () => {
+                    if (!selectedDomain.value || domains.value.length === 0) {
+                        alert("⚠️ 请先点击上方的【添加域名】，输入您解析好的邮箱后缀！");
+                        isAddingDomain.value = true;
+                        return;
+                    }
+
                     let currentPrefix = prefix.value.trim();
                     if (!currentPrefix) currentPrefix = Math.random().toString(36).substring(2, 10);
                     const randomPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -387,6 +425,7 @@
                 };
 
                 onMounted(async () => {
+                    await loadSystemConfig(); // 页面加载时自动拉取最新配置
                     if(currentUser.value) await fetchCloudAccounts();
                     if (accounts.value.length > 0) selectAccount(accounts.value[0]);
                 });
@@ -395,7 +434,8 @@
                     publicPopServer, publicPopPort, domains, selectedDomain, isAddingDomain, newDomainInput,
                     currentUser, showAuthModal, authMode, authForm, handleAuth, logout,
                     prefix, accounts, activeAccount, emails, loading, syncData, readingMail,
-                    addNewDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail
+                    addNewDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail,
+                    saveSystemConfig // 暴露给按钮
                 };
             }
         }).mount('#app');

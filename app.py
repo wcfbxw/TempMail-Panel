@@ -1,4 +1,4 @@
-```python
+import os
 import asyncio
 import sqlite3
 import poplib
@@ -15,6 +15,23 @@ from typing import List, Optional
 
 app = FastAPI()
 DB_FILE = "myserver_mail.db"
+
+# ==========================================
+# 核心优化：动态读取系统环境变量，彻底告别占位符
+# ==========================================
+ENV_FILE = "/etc/lightningmail.env"
+ENV_CONFIG = {}
+if os.path.exists(ENV_FILE):
+    with open(ENV_FILE, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if "=" in line and not line.startswith("#"):
+                k, v = line.split("=", 1)
+                ENV_CONFIG[k.strip()] = v.strip(' "\'')
+
+# 获取外部设定的 POP3 端口，若不存在则默认回退到安全的 110
+POP3_PORT = int(ENV_CONFIG.get("LM_PORT", 110))
+# ==========================================
 
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
@@ -225,8 +242,8 @@ def login_and_fetch(req: LoginRequest):
     if "@" not in email: raise HTTPException(status_code=400, detail="邮箱格式错误")
     
     try:
-        # 使用占位符端口连接内部 POP3
-        pop = poplib.POP3('127.0.0.1', {{REPLACE_PORT}}, timeout=5)
+        # 使用动态加载的全局 POP3_PORT 变量
+        pop = poplib.POP3('127.0.0.1', POP3_PORT, timeout=5)
         pop.user(email)
         pop.pass_(req.password)
         
@@ -286,9 +303,11 @@ async def startup_event():
     smtp_handler = LocalMailHandler()
     smtp_controller = Controller(smtp_handler, hostname='0.0.0.0', port=25)
     smtp_controller.start()
-    # 动态挂载用户设置的端口
-    await asyncio.start_server(pop3_handle_client, '0.0.0.0', {{REPLACE_PORT}})
+    
+    # 使用动态加载的全局 POP3_PORT 变量
+    await asyncio.start_server(pop3_handle_client, '0.0.0.0', POP3_PORT)
 
 if __name__ == "__main__":
     import uvicorn
+    # 强制在 127.0.0.1 运行，只接受 Nginx 代理，完美避开公网骚扰
     uvicorn.run(app, host="127.0.0.1", port=8888)

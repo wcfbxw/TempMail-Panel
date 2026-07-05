@@ -301,6 +301,18 @@ def get_config(suffix: str):
         if cursor.fetchone(): return {"is_active": True}
         return None
 
+@app.delete("/api/admin/config/{suffix}")
+def delete_config(suffix: str):
+    suffix = suffix.strip().lower()
+    if not suffix:
+        raise HTTPException(status_code=400, detail="Domain suffix is required")
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM domains WHERE domain_name=?", (suffix,))
+        conn.commit()
+        deleted = cursor.rowcount
+    return {"status": "success", "deleted": deleted}
+
 class LoginRequest(BaseModel): email: str; password: str
 
 @app.post("/api/login")

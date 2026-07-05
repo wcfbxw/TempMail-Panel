@@ -75,7 +75,10 @@
                 <div class="bg-[#191919] border border-[#262626] p-4 rounded-xl shrink-0 space-y-4">
                     <div class="flex justify-between items-center">
                         <h2 class="font-bold text-gray-200">快速生成</h2>
-                        <button @click="isAddingDomain = !isAddingDomain" class="text-xs text-gray-500 hover:text-blue-400">添加域名</button>
+                        <div class="flex items-center gap-3 text-xs">
+                            <button @click="isAddingDomain = !isAddingDomain" class="text-gray-500 hover:text-blue-400">添加域名</button>
+                            <button v-if="selectedDomain" @click="deleteSelectedDomain" class="text-gray-500 hover:text-red-400">删除当前</button>
+                        </div>
                     </div>
 
                     <div v-if="isAddingDomain" class="flex gap-2">
@@ -231,6 +234,7 @@
                 const readingMail = ref(null);
 
                 watch(accounts, (val) => localStorage.setItem('savedAccounts', JSON.stringify(val)), { deep: true });
+                const saveDomains = () => localStorage.setItem('savedDomains', JSON.stringify(domains.value));
 
                 // ========== 核心新增逻辑：对接后端配置接口 ==========
                 const loadSystemConfig = async () => {
@@ -323,11 +327,24 @@
                     await fetch('/api/admin/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ domain_suffix: newDom, display_name: '', pop3_server: '', pop3_port: 110, use_ssl: false, is_active: true }) });
                     if (!domains.value.includes(newDom)) { 
                         domains.value.push(newDom); 
-                        localStorage.setItem('savedDomains', JSON.stringify(domains.value)); 
+                        saveDomains();
                     }
                     selectedDomain.value = newDom;
                     isAddingDomain.value = false;
                     newDomainInput.value = '';
+                };
+
+                const deleteSelectedDomain = async () => {
+                    const domain = selectedDomain.value;
+                    if (!domain) return;
+                    if (!confirm(`确认删除域名后缀 @${domain}？已生成邮箱和历史邮件不会被删除。`)) return;
+                    try {
+                        await fetch(`/api/admin/config/${encodeURIComponent(domain)}`, { method: 'DELETE' });
+                    } catch (e) {}
+                    domains.value = domains.value.filter(dom => dom !== domain);
+                    saveDomains();
+                    selectedDomain.value = domains.value[0] || '';
+                    if (!selectedDomain.value) isAddingDomain.value = true;
                 };
 
                 const createAccount = async () => {
@@ -476,7 +493,7 @@
                     publicPopServer, publicPopPort, domains, selectedDomain, isAddingDomain, newDomainInput,
                     currentUser, showAuthModal, authMode, authForm, handleAuth, logout,
                     prefix, accounts, activeAccount, emails, loading, syncData, readingMail,
-                    addNewDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail,
+                    addNewDomain, deleteSelectedDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail,
                     formatSize, downloadAttachment,
                     saveSystemConfig // 暴露给按钮
                 };

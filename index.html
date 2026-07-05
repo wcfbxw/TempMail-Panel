@@ -180,6 +180,14 @@
                             </div>
                             <div class="text-xs text-gray-500 shrink-0">{{ readingMail.date }}</div>
                         </div>
+                        <div v-if="readingMail.attachments && readingMail.attachments.length" class="px-4 py-3 border-b border-[#333] bg-[#181818] flex flex-wrap items-center gap-2">
+                            <span class="text-xs text-gray-400 mr-1">附件</span>
+                            <button v-for="att in readingMail.attachments" :key="att.index"
+                                    @click="downloadAttachment(att)"
+                                    class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold transition max-w-full truncate">
+                                {{ att.filename }} ({{ formatSize(att.size) }})
+                            </button>
+                        </div>
                         <div class="flex-1 overflow-hidden p-4">
                             <iframe :srcdoc="readingMail.full_html" 
                                     sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms"
@@ -424,6 +432,40 @@
                     readingMail.value = mail;
                 };
 
+                const formatSize = (bytes) => {
+                    if (!bytes) return '0 B';
+                    if (bytes < 1024) return `${bytes} B`;
+                    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+                };
+
+                const downloadAttachment = async (attachment) => {
+                    if (!activeAccount.value || !readingMail.value || !readingMail.value.id) return;
+                    const res = await fetch('/api/mail/attachment', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            email: activeAccount.value.email,
+                            password: activeAccount.value.password,
+                            mail_id: readingMail.value.id,
+                            part_index: attachment.index
+                        })
+                    });
+                    if (!res.ok) {
+                        alert('附件下载失败');
+                        return;
+                    }
+                    const blob = await res.blob();
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = attachment.filename || 'attachment';
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    URL.revokeObjectURL(url);
+                };
+
                 onMounted(async () => {
                     await loadSystemConfig(); // 页面加载时自动拉取最新配置
                     if(currentUser.value) await fetchCloudAccounts();
@@ -435,6 +477,7 @@
                     currentUser, showAuthModal, authMode, authForm, handleAuth, logout,
                     prefix, accounts, activeAccount, emails, loading, syncData, readingMail,
                     addNewDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail,
+                    formatSize, downloadAttachment,
                     saveSystemConfig // 暴露给按钮
                 };
             }

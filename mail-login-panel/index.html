@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mail Login Panel</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      background: linear-gradient(135deg, #eef2ff, #f8fafc);
+      color: #111827;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .login-page {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: 420px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.8);
+      border-radius: 24px;
+      padding: 34px;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
+    }
+
+    .login-card h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      letter-spacing: -0.04em;
+    }
+
+    .login-card p {
+      margin: 0 0 28px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    .form-group input {
+      width: 100%;
+      height: 48px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      padding: 0 14px;
+      font-size: 15px;
+      outline: none;
+      background: #fff;
+      transition: all 0.2s;
+    }
+
+    .form-group input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    }
+
+    .btn {
+      border: none;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      width: 100%;
+      height: 50px;
+      background: #4f46e5;
+      color: #fff;
+      box-shadow: 0 12px 28px rgba(79, 70, 229, 0.25);
+    }
+
+    .btn-primary:hover {
+      background: #4338ca;
+      transform: translateY(-1px);
+    }
+
+    .btn-light {
+      background: #f3f4f6;
+      color: #111827;
+    }
+
+    .btn-light:hover {
+      background: #e5e7eb;
+    }
+
+    .btn-success {
+      background: #10b981;
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      background: #059669;
+    }
+
+    .error {
+      margin-top: 16px;
+      color: #dc2626;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: 64px;
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(18px);
+      border-bottom: 1px solid #e5e7eb;
+      padding: 0 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+
+    .brand-subtitle {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-pill {
+      padding: 8px 12px;
+      background: #eef2ff;
+      color: #4338ca;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .layout {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      min-height: 0;
+    }
+
+    .sidebar {
+      border-right: 1px solid #e5e7eb;
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(16px);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .sidebar-head {
+      padding: 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      gap: 10px;
+    }
+
+    .mail-list {
+      flex: 1;
+      overflow: auto;
+      padding: 12px;
+    }
+
+    .mail-item {
+      border: 1px solid #e5e7eb;
+      background: #fff;
+      border-radius: 18px;
+      padding: 14px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: all 0.18s;
+      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
+    }
+
+    .mail-item:hover {
+      transform: translateY(-1px);
+      border-color: #c7d2fe;
+      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
+    }
+
+    .mail-item.active {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
+    }
+
+    .mail-subject {
+      font-weight: 800;
+      font-size: 14px;
+      line-height: 1.35;
+      margin-bottom: 6px;
+      color: #111827;
+    }
+
+    .mail-meta {
+      font-size: 12px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .mail-preview {
+      font-size: 13px;
+      color: #4b5563;
+      line-height: 1.45;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .code-box {
+      margin: 10px 0;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: #ecfdf5;
+      color: #047857;
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .copy-small {
+      border: none;
+      background: #10b981;
+      color: #fff;
+      border-radius: 10px;
+      padding: 6px 9px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .content {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #f8fafc;
+    }
+
+    .empty {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #9ca3af;
+      font-size: 16px;
+    }
+
+    .mail-detail {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+
+    .detail-head {
+      padding: 22px 26px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+      flex-shrink: 0;
+    }
+
+    .detail-title {
+      font-size: 22px;
+      font-weight: 850;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+      line-height: 1.3;
+    }
+
+    .detail-info {
+      display: grid;
+      gap: 6px;
+      font-size: 13px;
+      color: #4b5563;
+    }
+
+    .detail-code {
+      margin-top: 16px;
+      max-width: 360px;
+    }
+
+    .detail-body {
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      padding: 18px;
+    }
+
+    .mail-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 16px 50px rgba(15, 23, 42, 0.08);
+    }
+
+    .loading {
+      padding: 16px;
+      color: #6b7280;
+      font-size: 14px;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        height: 45vh;
+        border-right: none;
+        border-bottom: 1px solid #e5e7eb;
+      }
+
+      .content {
+        height: 55vh;
+      }
+
+      .topbar {
+        height: auto;
+        padding: 12px;
+        gap: 10px;
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .top-actions {
+        justify-content: space-between;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="loginPage" class="login-page">
+    <div class="login-card">
+      <h1>邮箱登录</h1>
+      <p>请输入邮箱账号和密码，系统会自动连接本机 POP 服务。</p>
+
+      <div class="form-group">
+        <label>邮箱账号</label>
+        <input id="emailInput" type="email" placeholder="user@edu.zitw.de" autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label>邮箱密码</label>
+        <input id="passwordInput" type="password" placeholder="请输入邮箱密码" autocomplete="current-password" />
+      </div>
+
+      <button id="loginBtn" class="btn btn-primary">登录邮箱</button>
+
+      
+      <div style="margin-top:18px;text-align:center;font-size:13px;">
+        <a href="/admin" style="color:#4f46e5;text-decoration:none;font-weight:700;">管理员登录</a>
+      </div>
+
+      <div id="loginError" class="error hidden"></div>
+    </div>
+  </div>
+
+  <div id="appPage" class="app hidden">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-title">Mail Login Panel</div>
+        <div id="userEmail" class="brand-subtitle"></div>
+      </div>
+
+      <div class="top-actions">
+        <div id="pollStatus" class="status-pill">快速刷新中</div>
+        <button id="logoutBtn" class="btn btn-light">退出登录</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-head">
+          <button id="waitCodeBtn" class="btn btn-success">等待验证码</button>
+          <button id="refreshBtn" class="btn btn-light">刷新</button>
+        </div>
+
+        <div id="mailList" class="mail-list">
+          <div class="loading">正在加载邮件...</div>
+        </div>
+      </aside>
+
+      <main class="content">
+        <div id="emptyState" class="empty">点击左侧邮件查看内容</div>
+
+        <div id="mailDetail" class="mail-detail hidden">
+          <div class="detail-head">
+            <div id="detailTitle" class="detail-title"></div>
+            <div class="detail-info">
+              <div id="detailFrom"></div>
+              <div id="detailTo"></div>
+              <div id="detailDate"></div>
+            </div>
+            <div id="detailCodeWrap" class="detail-code hidden"></div>
+          </div>
+
+          <div class="detail-body">
+            <iframe id="mailFrame" class="mail-frame" sandbox=""></iframe>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script>
+    const API = "";
+
+    let token = sessionStorage.getItem("mail_panel_token") || "";
+    let currentEmail = sessionStorage.getItem("mail_panel_email") || "";
+    let mails = [];
+    let selectedUidl = "";
+    let pollTimer = null;
+    let fastUntil = 0;
+
+    const loginPage = document.getElementById("loginPage");
+    const appPage = document.getElementById("appPage");
+    const emailInput = document.getElementById("emailInput");
+    const passwordInput = document.getElementById("passwordInput");
+    const loginBtn = document.getElementById("loginBtn");
+    const loginError = document.getElementById("loginError");
+    const userEmail = document.getElementById("userEmail");
+    const mailList = document.getElementById("mailList");
+    const waitCodeBtn = document.getElementById("waitCodeBtn");
+    const refreshBtn = document.getElementById("refreshBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const pollStatus = document.getElementById("pollStatus");
+
+    const emptyState = document.getElementById("emptyState");
+    const mailDetail = document.getElementById("mailDetail");
+    const detailTitle = document.getElementById("detailTitle");
+    const detailFrom = document.getElementById("detailFrom");
+    const detailTo = document.getElementById("detailTo");
+    const detailDate = document.getElementById("detailDate");
+    const detailCodeWrap = document.getElementById("detailCodeWrap");
+    const mailFrame = document.getElementById("mailFrame");
+
+    function showLogin() {
+      loginPage.classList.remove("hidden");
+      appPage.classList.add("hidden");
+    }
+
+    function showApp() {
+      loginPage.classList.add("hidden");
+      appPage.classList.remove("hidden");
+      userEmail.textContent = currentEmail;
+    }
+
+    function setError(msg) {
+      loginError.textContent = msg;
+      loginError.classList.remove("hidden");
+    }
+
+    function clearError() {
+      loginError.textContent = "";
+      loginError.classList.add("hidden");
+    }
+
+    async function request(path, options = {}) {
+      const headers = options.headers || {};
+      headers["Content-Type"] = headers["Content-Type"] || "application/json";
+
+      if (token) {
+        headers["Authorization"] = "Bearer " + token;
+      }
+
+      const res = await fetch(API + path, {
+        ...options,
+        headers
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.detail || data.message || "请求失败");
+      }
+
+      return data;
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatDate(value) {
+      if (!value) return "";
+      try {
+        const d = new Date(value);
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleString();
+        }
+      } catch (e) {}
+      return value;
+    }
+
+    function copyText(text) {
+      navigator.clipboard.writeText(text).catch(() => {
+        const input = document.createElement("textarea");
+        input.value = text;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+      });
+    }
+
+    function startFastMode() {
+      fastUntil = Date.now() + 120 * 1000;
+      pollStatus.textContent = "验证码模式：2秒刷新";
+    }
+
+    function getPollDelay() {
+      if (Date.now() < fastUntil) {
+        return 2000;
+      }
+      return 10000;
+    }
+
+    function schedulePoll() {
+      clearTimeout(pollTimer);
+
+      const delay = getPollDelay();
+
+      if (Date.now() >= fastUntil) {
+        pollStatus.textContent = "普通模式：10秒刷新";
+      }
+
+      pollTimer = setTimeout(async () => {
+        await loadMails(false);
+        schedulePoll();
+      }, delay);
+    }
+
+    function renderMailList() {
+      if (!mails.length) {
+        mailList.innerHTML = '<div class="loading">暂无邮件</div>';
+        return;
+      }
+
+      mailList.innerHTML = mails.map(mail => {
+        const active = mail.uidl === selectedUidl ? "active" : "";
+        const codeHtml = mail.code ? `
+          <div class="code-box">
+            <span>${escapeHtml(mail.code)}</span>
+            <button class="copy-small" onclick="event.stopPropagation(); copyText('${escapeHtml(mail.code)}')">复制</button>
+          </div>
+        ` : "";
+
+        return `
+          <div class="mail-item ${active}" onclick="openMail('${escapeHtml(mail.uidl)}')">
+            <div class="mail-subject">${escapeHtml(mail.subject || "无主题")}</div>
+            <div class="mail-meta">${escapeHtml(mail.from_name || mail.from || "未知发件人")} · ${escapeHtml(formatDate(mail.date))}</div>
+            ${codeHtml}
+            <div class="mail-preview">${escapeHtml(mail.preview || "")}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    async function loadMails(showLoading = true) {
+      if (showLoading) {
+        mailList.innerHTML = '<div class="loading">正在加载邮件...</div>';
+      }
+
+      try {
+        const data = await request("/api/mail/list?limit=30");
+        mails = data.mails || [];
+        renderMailList();
+
+        if (!selectedUidl && mails.length) {
+          await openMail(mails[0].uidl);
+        }
+      } catch (err) {
+        mailList.innerHTML = `<div class="loading">读取失败：${escapeHtml(err.message)}</div>`;
+      }
+    }
+
+    async function openMail(uidl) {
+      selectedUidl = uidl;
+      renderMailList();
+
+      emptyState.classList.add("hidden");
+      mailDetail.classList.remove("hidden");
+
+      detailTitle.textContent = "加载中...";
+      detailFrom.textContent = "";
+      detailTo.textContent = "";
+      detailDate.textContent = "";
+      detailCodeWrap.classList.add("hidden");
+      mailFrame.srcdoc = "";
+
+      try {
+        const data = await request("/api/mail/detail?uidl=" + encodeURIComponent(uidl));
+        const mail = data.mail;
+
+        detailTitle.textContent = mail.subject || "无主题";
+        detailFrom.textContent = "发件人：" + (mail.from_name ? `${mail.from_name} <${mail.from}>` : mail.from || "");
+        detailTo.textContent = "收件人：" + (mail.to_raw || mail.to || "");
+        detailDate.textContent = "时间：" + formatDate(mail.date);
+
+        if (mail.code) {
+          detailCodeWrap.classList.remove("hidden");
+          detailCodeWrap.innerHTML = `
+            <div class="code-box">
+              <span>${escapeHtml(mail.code)}</span>
+              <button class="copy-small" onclick="copyText('${escapeHtml(mail.code)}')">复制验证码</button>
+            </div>
+          `;
+        } else {
+          detailCodeWrap.classList.add("hidden");
+          detailCodeWrap.innerHTML = "";
+        }
+
+        const body = mail.html
+          ? mail.html
+          : `<pre style="white-space:pre-wrap;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;line-height:1.7;font-size:15px;color:#111827;">${escapeHtml(mail.text || "")}</pre>`;
+
+        mailFrame.srcdoc = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <meta charset="UTF-8">
+            <base target="_blank">
+            <style>
+              body {
+                margin: 0;
+                padding: 22px;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+                color: #111827;
+                line-height: 1.6;
+                word-break: break-word;
+              }
+              img {
+                max-width: 100%;
+                height: auto;
+              }
+              table {
+                max-width: 100%;
+              }
+              a {
+                color: #4f46e5;
+              }
+            </style>
+          </head>
+          <body>${body}</body>
+          </html>
+        `;
+      } catch (err) {
+        detailTitle.textContent = "读取失败";
+        mailFrame.srcdoc = `<pre>${escapeHtml(err.message)}</pre>`;
+      }
+    }
+
+    async function login() {
+      clearError();
+
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+
+      if (!email || !password) {
+        setError("请输入邮箱账号和密码");
+        return;
+      }
+
+      loginBtn.disabled = true;
+      loginBtn.textContent = "登录中...";
+
+      try {
+        const data = await request("/api/user/login", {
+          method: "POST",
+          body: JSON.stringify({ email, password })
+        });
+
+        token = data.token;
+        currentEmail = data.email;
+
+        sessionStorage.setItem("mail_panel_token", token);
+        sessionStorage.setItem("mail_panel_email", currentEmail);
+
+        showApp();
+        startFastMode();
+        await loadMails(true);
+        schedulePoll();
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = "登录邮箱";
+      }
+    }
+
+    async function logout() {
+      try {
+        await request("/api/user/logout", {
+          method: "POST",
+          body: JSON.stringify({ token })
+        });
+      } catch (e) {}
+
+      clearTimeout(pollTimer);
+      token = "";
+      currentEmail = "";
+      selectedUidl = "";
+      mails = [];
+
+      sessionStorage.removeItem("mail_panel_token");
+      sessionStorage.removeItem("mail_panel_email");
+
+      showLogin();
+    }
+
+    loginBtn.addEventListener("click", login);
+
+    passwordInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") login();
+    });
+
+    emailInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") login();
+    });
+
+    refreshBtn.addEventListener("click", () => loadMails(true));
+
+    waitCodeBtn.addEventListener("click", async () => {
+      startFastMode();
+      await loadMails(true);
+      schedulePoll();
+    });
+
+    logoutBtn.addEventListener("click", logout);
+
+    if (token && currentEmail) {
+      showApp();
+      startFastMode();
+      loadMails(true);
+      schedulePoll();
+    } else {
+      showLogin();
+    }
+  </script>
+</body>
+</html>

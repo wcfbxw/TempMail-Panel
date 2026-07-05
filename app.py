@@ -7,8 +7,9 @@ import re
 import html
 from email import message_from_bytes
 from email.header import decode_header
+from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Header
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel
 from aiosmtpd.controller import Controller
 from typing import List, Optional
@@ -69,6 +70,36 @@ def decode_mime_word(s):
             res += part.decode(charset or 'utf-8', errors='ignore')
         else: res += str(part)
     return res
+
+def get_attachments(msg):
+    attachments = []
+    for part_index, part in enumerate(msg.walk()):
+        if part.is_multipart():
+            continue
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            continue
+        disposition = (part.get_content_disposition() or "").lower()
+        filename = part.get_filename()
+        if not filename and disposition != "attachment":
+            continue
+        filename = decode_mime_word(filename or f"attachment-{len(attachments) + 1}")
+        attachments.append({
+            "index": part_index,
+            "filename": filename,
+            "content_type": part.get_content_type() or "application/octet-stream",
+            "size": len(payload)
+        })
+    return attachments
+
+def require_mailbox_access(email, password):
+    email = email.strip().lower()
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM accounts WHERE email = ? AND password = ?", (email, password))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=401, detail="Invalid mailbox credentials")
+    return email
 
 class LocalMailHandler:
     async def handle_DATA(self, server, session, envelope):
@@ -169,6 +200,7 @@ class AccountModel(BaseModel): email: str; password: str; remark: Optional[str] 
 class SyncRequest(BaseModel): accounts: List[AccountModel]
 class UnlinkRequest(BaseModel): email: str
 class SysConfigModel(BaseModel): pop_host: str; pop_port: int
+class AttachmentRequest(BaseModel): email: str; password: str; mail_id: int; part_index: int
 
 # ==========================================
 # 新增系统配置同步接口
@@ -285,6 +317,14 @@ def login_and_fetch(req: LoginRequest):
         pop.pass_(req.password)
         
         num_msgs = len(pop.list()[1])
+        uidl_map = {}
+        try:
+            for line in pop.uidl()[1]:
+                parts = line.decode("utf-8", errors="ignore").split()
+                if len(parts) >= 2 and parts[1].startswith("msg_"):
+                    uidl_map[int(parts[0])] = int(parts[1][4:])
+        except Exception:
+            pass
         emails = []
         start = max(1, num_msgs - 29) 
         
@@ -320,16 +360,47 @@ def login_and_fetch(req: LoginRequest):
             full_html = body_html if body_html else f"<pre style='font-family:sans-serif; white-space:pre-wrap; padding:20px;'>{html.escape(body_plain)}</pre>"
                 
             emails.append({
+                "id": uidl_map.get(i),
                 "from": sender, 
                 "subject": sub, 
                 "snippet": snippet, 
                 "full_html": full_html, 
-                "date": msg.get("Date", "")
+                "date": msg.get("Date", ""),
+                "attachments": get_attachments(msg)
             })
         pop.quit()
         return {"status": "success", "emails": emails}
     except Exception as e:
         raise HTTPException(status_code=401, detail="凭证错误")
+
+@app.post("/api/mail/attachment")
+def download_attachment(req: AttachmentRequest):
+    email = require_mailbox_access(req.email, req.password)
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT raw_source FROM emails WHERE id = ? AND to_address = ?", (req.mail_id, email))
+        row = cursor.fetchone()
+    if not row:
+        raise HTTPException(status_code=404, detail="Message not found")
+
+    msg = message_from_bytes(row[0])
+    for part_index, part in enumerate(msg.walk()):
+        if part_index != req.part_index:
+            continue
+        payload = part.get_payload(decode=True)
+        if payload is None:
+            break
+        filename = decode_mime_word(part.get_filename() or f"attachment-{part_index}")
+        content_type = part.get_content_type() or "application/octet-stream"
+        return Response(
+            content=payload,
+            media_type=content_type,
+            headers={
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}",
+                "X-Content-Type-Options": "nosniff"
+            }
+        )
+    raise HTTPException(status_code=404, detail="Attachment not found")
 
 @app.get("/", response_class=HTMLResponse)
 def index():

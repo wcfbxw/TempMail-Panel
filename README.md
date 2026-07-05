@@ -32,3 +32,12 @@ cd TempMail-Panel
 ```bash
 bash install.sh
 ```
+
+安装过程中脚本会询问是否同时安装 `mail-login-panel` 独立登录邮箱面板。选择 `y` 后会继续要求填写：
+
+- 登录邮箱面板访问域名，例如 `login.example.com`
+- 登录面板管理员账号和密码
+- 登录面板默认允许的邮箱后缀，例如 `edu.zitw.de`
+- 登录面板内部运行端口，默认 `8899`
+
+脚本会自动创建 `mail-login-panel` 的虚拟环境、`.env` 配置、systemd 自启服务、Nginx 反向代理和 HTTPS 证书。

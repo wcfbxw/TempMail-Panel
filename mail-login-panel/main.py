@@ -561,7 +561,10 @@ def startup():
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    return (BASE_DIR / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(
+        (BASE_DIR / "index.html").read_text(encoding="utf-8"),
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 @app.get("/api/health")
 def health():

@@ -563,6 +563,21 @@
       });
     }
 
+    function bindMailListEvents() {
+      mailList.querySelectorAll(".mail-item").forEach(item => {
+        item.addEventListener("click", () => {
+          openMail(item.dataset.uidl || "");
+        });
+      });
+
+      mailList.querySelectorAll(".copy-small[data-code]").forEach(button => {
+        button.addEventListener("click", event => {
+          event.stopPropagation();
+          copyText(button.dataset.code || "");
+        });
+      });
+    }
+
     function startFastMode() {
       fastUntil = Date.now() + 120 * 1000;
       pollStatus.textContent = "验证码模式：2秒刷新";
@@ -601,12 +616,12 @@
         const codeHtml = mail.code ? `
           <div class="code-box">
             <span>${escapeHtml(mail.code)}</span>
-            <button class="copy-small" onclick="event.stopPropagation(); copyText('${escapeHtml(mail.code)}')">复制</button>
+            <button class="copy-small" data-code="${escapeHtml(mail.code)}">复制</button>
           </div>
         ` : "";
 
         return `
-          <div class="mail-item ${active}" onclick="openMail('${escapeHtml(mail.uidl)}')">
+          <div class="mail-item ${active}" data-uidl="${escapeHtml(mail.uidl)}">
             <div class="mail-subject">${escapeHtml(mail.subject || "无主题")}</div>
             <div class="mail-meta">${escapeHtml(mail.from_name || mail.from || "未知发件人")} · ${escapeHtml(formatDate(mail.date))}</div>
             ${codeHtml}
@@ -614,6 +629,7 @@
           </div>
         `;
       }).join("");
+      bindMailListEvents();
     }
 
     async function loadMails(showLoading = true) {

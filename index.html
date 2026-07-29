@@ -236,6 +236,30 @@
                 watch(accounts, (val) => localStorage.setItem('savedAccounts', JSON.stringify(val)), { deep: true });
                 const saveDomains = () => localStorage.setItem('savedDomains', JSON.stringify(domains.value));
 
+                const loadDomains = async () => {
+                    try {
+                        const res = await fetch('/api/admin/config');
+                        if (!res.ok) return;
+
+                        const data = await res.json();
+                        const serverDomains = [...new Set(
+                            (data.domains || [])
+                                .map(domain => String(domain).trim().toLowerCase())
+                                .filter(Boolean)
+                        )];
+
+                        domains.value = serverDomains;
+                        saveDomains();
+
+                        if (!serverDomains.includes(selectedDomain.value)) {
+                            selectedDomain.value = serverDomains[0] || '';
+                        }
+                        if (!selectedDomain.value) isAddingDomain.value = true;
+                    } catch (e) {
+                        console.error("域名列表拉取失败，继续使用本地缓存");
+                    }
+                };
+
                 // ========== 核心新增逻辑：对接后端配置接口 ==========
                 const loadSystemConfig = async () => {
                     try {
@@ -485,6 +509,7 @@
 
                 onMounted(async () => {
                     await loadSystemConfig(); // 页面加载时自动拉取最新配置
+                    await loadDomains();
                     if(currentUser.value) await fetchCloudAccounts();
                     if (accounts.value.length > 0) selectAccount(accounts.value[0]);
                 });

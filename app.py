@@ -293,6 +293,18 @@ def save_config(config: POP3ConfigModel):
         conn.commit()
     return {"status": "success"}
 
+@app.get("/api/admin/config")
+def list_configs():
+    with sqlite3.connect(DB_FILE) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT domain_name FROM domains "
+            "WHERE domain_name IS NOT NULL AND TRIM(domain_name) != '' "
+            "ORDER BY id"
+        )
+        domains = [row[0].strip().lower() for row in cursor.fetchall()]
+    return {"domains": domains}
+
 @app.get("/api/admin/config/{suffix}")
 def get_config(suffix: str):
     with sqlite3.connect(DB_FILE) as conn:
@@ -416,7 +428,12 @@ def download_attachment(req: AttachmentRequest):
 
 @app.get("/", response_class=HTMLResponse)
 def index():
-    with open("index.html", "r", encoding="utf-8") as f: return f.read()
+    with open("index.html", "r", encoding="utf-8") as f:
+        content = f.read()
+    return HTMLResponse(
+        content,
+        headers={"Cache-Control": "no-store, max-age=0"},
+    )
 
 @app.on_event("startup")
 async def startup_event():

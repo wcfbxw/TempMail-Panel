@@ -2,206 +2,595 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>闪电邮 - 极速接码平台</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#111315">
+    <title>闪电邮 - 邮箱工作台</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
-        body { background-color: #0a0a0a; color: #e5e5e5; font-family: -apple-system, BlinkMacSystemFont, sans-serif; overflow: hidden; }
-        .input-dark { background-color: #262626; border: 1px solid #404040; color: #d4d4d4; }
-        .input-dark:focus { border-color: #525252; outline: none; }
-        .btn-dark { background-color: #333333; border: 1px solid #404040; color: #ffffff; }
-        .btn-dark:hover { background-color: #404040; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #141414; }
-        ::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
-        .mail-row:hover { background-color: #1a1a1a; cursor: pointer; }
+        :root {
+            color-scheme: dark;
+            --bg: #0d0f10;
+            --surface: #131618;
+            --surface-2: #181c1f;
+            --surface-3: #202529;
+            --border: #2a3035;
+            --border-strong: #3a4248;
+            --text: #f1f4f6;
+            --muted: #89939b;
+            --subtle: #626c74;
+            --blue: #4f8cff;
+            --blue-strong: #3777ea;
+            --green: #36c991;
+            --amber: #e3a84b;
+            --red: #e66a74;
+            --header-height: 64px;
+            font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+
+        * { box-sizing: border-box; }
+        html, body, #app { width: 100%; height: 100%; }
+        body { margin: 0; background: var(--bg); color: var(--text); overflow: hidden; letter-spacing: 0; }
+        button, input, select { font: inherit; letter-spacing: 0; }
+        button { color: inherit; }
+        button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+            outline: 2px solid var(--blue);
+            outline-offset: 2px;
+        }
+
+        [v-cloak] { display: none; }
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #343b40; border-radius: 4px; }
+
+        .app-shell { height: 100dvh; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+        .topbar {
+            height: var(--header-height);
+            flex: 0 0 var(--header-height);
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            padding: 0 18px;
+            background: #111315;
+            border-bottom: 1px solid var(--border);
+            position: relative;
+            z-index: 30;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; min-width: 164px; }
+        .brand-mark {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border-radius: 7px;
+            background: var(--blue);
+            color: #fff;
+            font-size: 17px;
+            font-weight: 900;
+        }
+        .brand-name { margin: 0; font-size: 17px; line-height: 1.1; font-weight: 800; }
+        .brand-caption { margin-top: 3px; color: var(--muted); font-size: 11px; }
+
+        .server-menu { position: relative; }
+        .server-menu summary {
+            min-height: 36px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 11px;
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            background: var(--surface-2);
+            color: var(--muted);
+            font-size: 12px;
+            cursor: pointer;
+            list-style: none;
+            white-space: nowrap;
+        }
+        .server-menu summary::-webkit-details-marker { display: none; }
+        .server-menu[open] summary { border-color: var(--border-strong); color: var(--text); }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px rgba(54, 201, 145, .12); }
+        .server-popover {
+            position: absolute;
+            top: 44px;
+            left: 0;
+            width: 330px;
+            padding: 14px;
+            border: 1px solid var(--border-strong);
+            border-radius: 8px;
+            background: #171a1c;
+            box-shadow: 0 18px 48px rgba(0, 0, 0, .36);
+        }
+        .popover-title { margin: 0 0 12px; font-size: 13px; font-weight: 750; }
+        .field-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 700; }
+        .server-grid { display: grid; grid-template-columns: 1fr 82px; gap: 8px; }
+
+        .top-user { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .user-copy { min-width: 0; text-align: right; }
+        .user-name { max-width: 210px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 750; }
+        .user-state { margin-top: 2px; color: var(--muted); font-size: 11px; }
+
+        .workspace {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: 338px minmax(350px, 410px) minmax(360px, 1fr);
+            overflow: hidden;
+        }
+        .pane { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--surface); }
+        .account-pane, .inbox-pane { border-right: 1px solid var(--border); }
+        .account-pane { background: #111416; }
+        .inbox-pane { background: var(--surface); }
+        .reader-pane { background: #0f1112; }
+
+        .pane-header {
+            min-height: 62px;
+            flex: 0 0 auto;
+            padding: 12px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+            background: rgba(19, 22, 24, .96);
+        }
+        .pane-title-wrap { min-width: 0; flex: 1; }
+        .pane-kicker { margin-bottom: 3px; color: var(--muted); font-size: 10px; font-weight: 750; text-transform: uppercase; }
+        .pane-title { margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; line-height: 1.2; font-weight: 800; }
+        .pane-meta { margin-top: 4px; color: var(--muted); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .composer { padding: 14px; border-bottom: 1px solid var(--border); background: var(--surface); }
+        .section-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 11px; }
+        .section-heading h2 { margin: 0; font-size: 13px; font-weight: 800; }
+        .inline-actions { display: flex; align-items: center; gap: 4px; }
+        .generate-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(130px, .9fr) 38px; gap: 7px; }
+        .domain-add-grid { display: grid; grid-template-columns: 1fr 38px; gap: 7px; }
+
+        .control {
+            width: 100%;
+            height: 38px;
+            min-width: 0;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0 10px;
+            background: var(--surface-2);
+            color: var(--text);
+            font-size: 12px;
+        }
+        .control::placeholder { color: var(--subtle); }
+        .control:hover { border-color: var(--border-strong); }
+        .control:focus { border-color: var(--blue); outline: none; }
+        select.control { cursor: pointer; }
+
+        .btn {
+            height: 36px;
+            border: 1px solid transparent;
+            border-radius: 6px;
+            padding: 0 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 7px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 750;
+            white-space: nowrap;
+            transition: background-color .15s, border-color .15s, color .15s;
+        }
+        .btn-primary { background: var(--blue-strong); color: #fff; }
+        .btn-primary:hover { background: var(--blue); }
+        .btn-secondary { border-color: var(--border); background: var(--surface-2); color: var(--text); }
+        .btn-secondary:hover { background: var(--surface-3); border-color: var(--border-strong); }
+        .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
+        .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
+        .btn-danger:hover { background: rgba(230, 106, 116, .1); color: var(--red); }
+        .btn-icon { width: 36px; padding: 0; font-size: 17px; }
+        .btn-generate { width: 100%; height: 40px; margin-top: 8px; }
+
+        .accounts-head, .inbox-toolbar {
+            min-height: 43px;
+            flex: 0 0 auto;
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        .toolbar-title { color: var(--muted); font-size: 11px; font-weight: 800; }
+        .count-badge {
+            min-width: 22px;
+            height: 20px;
+            padding: 0 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            background: var(--surface-3);
+            color: var(--muted);
+            font-size: 10px;
+            font-weight: 800;
+        }
+        .sync-state { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 11px; }
+        .sync-state .status-dot { width: 6px; height: 6px; box-shadow: none; }
+        .sync-state.loading .status-dot { background: var(--amber); }
+
+        .account-list, .mail-list { flex: 1; min-height: 0; overflow: auto; }
+        .account-list { padding: 8px; }
+        .account-item {
+            position: relative;
+            min-height: 78px;
+            margin-bottom: 6px;
+            padding: 11px 38px 10px 11px;
+            border: 1px solid transparent;
+            border-radius: 7px;
+            background: transparent;
+            cursor: pointer;
+        }
+        .account-item:hover { background: var(--surface-2); }
+        .account-item.active { border-color: rgba(79, 140, 255, .58); background: rgba(79, 140, 255, .1); }
+        .remark-input {
+            width: 100%;
+            height: 25px;
+            border: 0;
+            border-bottom: 1px solid transparent;
+            padding: 0;
+            background: transparent;
+            color: var(--amber);
+            outline: none;
+            font-size: 11px;
+            font-weight: 700;
+        }
+        .remark-input::placeholder { color: var(--subtle); }
+        .remark-input:focus { border-color: var(--amber); }
+        .account-email { margin-top: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 12px ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .account-password { margin-top: 5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px ui-monospace, SFMono-Regular, Consolas, monospace; }
+        .account-password strong { color: var(--green); font-weight: 650; }
+        .account-remove { position: absolute; right: 7px; top: 22px; opacity: 0; }
+        .account-item:hover .account-remove, .account-remove:focus { opacity: 1; }
+
+        .mail-row {
+            width: 100%;
+            min-height: 78px;
+            padding: 12px 14px;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 5px 12px;
+            border: 0;
+            border-bottom: 1px solid var(--border);
+            background: transparent;
+            text-align: left;
+            cursor: pointer;
+        }
+        .mail-row:hover { background: var(--surface-2); }
+        .mail-row.active { background: rgba(79, 140, 255, .09); box-shadow: inset 3px 0 0 var(--blue); }
+        .mail-from, .mail-subject, .mail-snippet { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .mail-from { color: var(--muted); font-size: 11px; font-weight: 700; }
+        .mail-date { color: var(--subtle); font-size: 10px; white-space: nowrap; }
+        .mail-subject { grid-column: 1 / -1; color: var(--text); font-size: 13px; font-weight: 800; }
+        .mail-snippet { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+
+        .reader-empty, .empty-list {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 28px;
+            color: var(--muted);
+            text-align: center;
+        }
+        .empty-list { min-height: 180px; }
+        .empty-mark {
+            width: 46px;
+            height: 46px;
+            margin: 0 auto 12px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: var(--surface-2);
+            color: var(--blue);
+            font-size: 21px;
+            font-weight: 850;
+        }
+        .empty-title { margin: 0; color: var(--text); font-size: 14px; font-weight: 800; }
+        .empty-copy { margin: 7px 0 0; color: var(--muted); font-size: 11px; line-height: 1.6; }
+
+        .reader { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+        .reader-header { min-height: 82px; padding: 13px 16px; align-items: flex-start; }
+        .reader-title { margin: 0; font-size: 16px; line-height: 1.35; font-weight: 800; white-space: normal; overflow-wrap: anywhere; }
+        .reader-from { margin-top: 6px; color: var(--muted); font-size: 11px; overflow-wrap: anywhere; }
+        .reader-date { color: var(--subtle); font-size: 10px; white-space: nowrap; }
+        .attachment-bar { padding: 9px 14px; display: flex; align-items: center; gap: 7px; overflow-x: auto; border-bottom: 1px solid var(--border); background: var(--surface); }
+        .attachment-label { color: var(--muted); font-size: 11px; font-weight: 750; }
+        .attachment-btn { max-width: 260px; height: 30px; flex: 0 0 auto; overflow: hidden; text-overflow: ellipsis; }
+        .reader-body { flex: 1; min-height: 0; padding: 10px; }
+        .mail-frame { width: 100%; height: 100%; border: 0; border-radius: 6px; background: #fff; }
+
+        .auth-overlay { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 18px; background: rgba(4, 5, 6, .78); }
+        .auth-dialog { width: min(390px, 100%); border: 1px solid var(--border-strong); border-radius: 8px; background: #171a1c; box-shadow: 0 24px 70px rgba(0, 0, 0, .45); }
+        .auth-head { padding: 17px 18px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); }
+        .auth-head h2 { margin: 0; font-size: 16px; }
+        .auth-body { padding: 18px; }
+        .auth-body .control { height: 42px; margin-bottom: 10px; }
+        .auth-switch { width: 100%; margin-top: 12px; color: var(--muted); }
+
+        .mobile-only, .mobile-nav { display: none; }
+
+        @media (max-width: 1180px) {
+            .workspace { grid-template-columns: 300px 350px minmax(330px, 1fr); }
+            .brand { min-width: auto; }
+            .brand-caption { display: none; }
+        }
+
+        @media (max-width: 860px) {
+            :root { --header-height: 58px; }
+            body { overflow: hidden; }
+            .topbar { gap: 9px; padding: 0 10px; }
+            .brand { flex: 0 0 auto; }
+            .brand-mark { width: 32px; height: 32px; }
+            .brand-name { font-size: 15px; }
+            .brand-caption, .server-label, .user-state { display: none; }
+            .server-menu { margin-left: auto; }
+            .server-menu summary { width: 36px; min-height: 36px; padding: 0; justify-content: center; font-size: 0; }
+            .server-menu summary::after { content: "⋯"; color: var(--text); font-size: 19px; line-height: 1; }
+            .server-menu .status-dot { display: none; }
+            .server-popover { position: fixed; top: 64px; left: 10px; right: 10px; width: auto; }
+            .top-user { margin-left: 0; gap: 6px; }
+            .user-copy { display: none; }
+            .top-user .btn { max-width: 112px; overflow: hidden; text-overflow: ellipsis; }
+
+            .workspace { position: relative; display: block; flex: 1; min-height: 0; }
+            .pane { position: absolute; inset: 0; display: none; border-right: 0; }
+            .workspace[data-mobile-view="accounts"] .account-pane,
+            .workspace[data-mobile-view="inbox"] .inbox-pane,
+            .workspace[data-mobile-view="detail"] .reader-pane { display: flex; }
+            .mobile-only { display: inline-flex; }
+            .mobile-nav {
+                height: 56px;
+                flex: 0 0 calc(56px + env(safe-area-inset-bottom));
+                padding: 5px 8px env(safe-area-inset-bottom);
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 6px;
+                border-top: 1px solid var(--border);
+                background: #111315;
+            }
+            .mobile-nav button {
+                border: 0;
+                border-radius: 6px;
+                background: transparent;
+                color: var(--muted);
+                font-size: 11px;
+                font-weight: 750;
+                cursor: pointer;
+            }
+            .mobile-nav button.active { background: var(--surface-3); color: var(--text); }
+            .generate-grid { grid-template-columns: minmax(0, 1fr) minmax(128px, .85fr) 38px; }
+            .account-remove { opacity: 1; }
+            .reader-header { min-height: 96px; }
+            .reader-date { display: none; }
+            .reader-body { padding: 0; }
+            .mail-frame { border-radius: 0; }
+        }
+
+        @media (max-width: 390px) {
+            .brand-name { display: none; }
+            .generate-grid { grid-template-columns: 1fr 38px; }
+            .generate-grid .prefix-control { grid-column: 1 / -1; }
+            .server-grid { grid-template-columns: 1fr 70px; }
+        }
     </style>
 </head>
-<body class="h-screen flex flex-col relative">
-
-    <div id="app" class="flex flex-col h-full">
-        
-        <div v-if="showAuthModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-            <div class="bg-[#141414] border border-[#333] p-8 rounded-2xl shadow-2xl w-96 max-w-full">
-                <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-xl font-bold">{{ authMode === 'login' ? '🔑 账号登录' : '📝 注册账号' }}</h2>
-                    <button @click="showAuthModal = false" class="text-gray-500 hover:text-white">✖</button>
+<body>
+    <div id="app" class="app-shell" v-cloak>
+        <div v-if="showAuthModal" class="auth-overlay" @click.self="showAuthModal = false">
+            <div class="auth-dialog" role="dialog" aria-modal="true" :aria-label="authMode === 'login' ? '账号登录' : '注册账号'">
+                <div class="auth-head">
+                    <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
+                    <button @click="showAuthModal = false" class="btn btn-quiet btn-icon" aria-label="关闭" title="关闭">×</button>
                 </div>
-                <div class="space-y-4">
-                    <input v-model="authForm.username" type="text" placeholder="用户名" class="w-full input-dark rounded-lg px-4 py-3">
-                    <input v-model="authForm.password" type="password" placeholder="密码" class="w-full input-dark rounded-lg px-4 py-3">
-                    <button @click="handleAuth" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition">
-                        {{ authMode === 'login' ? '登 录' : '注 册' }}
+                <div class="auth-body">
+                    <label class="field-label" for="auth-username">用户名</label>
+                    <input id="auth-username" v-model="authForm.username" type="text" autocomplete="username" class="control" placeholder="输入用户名">
+                    <label class="field-label" for="auth-password">密码</label>
+                    <input id="auth-password" v-model="authForm.password" type="password" autocomplete="current-password" class="control" placeholder="输入密码" @keyup.enter="handleAuth">
+                    <button @click="handleAuth" class="btn btn-primary" style="width: 100%; height: 42px;">
+                        {{ authMode === 'login' ? '登录' : '注册' }}
                     </button>
-                </div>
-                <div class="mt-6 text-center text-sm text-gray-500">
-                    <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="hover:text-blue-400">
-                        {{ authMode === 'login' ? '没有账号？点击注册' : '已有账号？直接登录' }}
+                    <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="btn btn-quiet auth-switch">
+                        {{ authMode === 'login' ? '创建新账号' : '返回账号登录' }}
                     </button>
                 </div>
             </div>
         </div>
 
-        <div class="bg-[#141414] border-b border-[#262626] p-4 flex justify-between items-center shrink-0">
-            <div class="flex items-center gap-4">
-                <h1 class="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-500">闪电邮</h1>
-                
-                <div class="flex items-center text-xs bg-[#1f1f1f] border border-[#333] rounded overflow-hidden focus-within:border-blue-500 transition-colors">
-                    <span class="text-gray-500 px-2 py-1 bg-[#141414] border-r border-[#333]">POP3:</span>
-                    <input v-model="publicPopServer" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-40 outline-none focus:text-white font-mono" placeholder="读取中...">
-                    <span class="text-gray-500 px-2 py-1 bg-[#141414] border-l border-r border-[#333]">端口:</span>
-                    <input v-model="publicPopPort" type="text" class="bg-transparent text-gray-300 px-2 py-1 w-12 outline-none focus:text-white font-mono text-center" placeholder="...">
-                    <button @click="saveSystemConfig" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 font-bold transition border-l border-[#333]">确认修改</button>
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true">闪</div>
+                <div>
+                    <h1 class="brand-name">闪电邮</h1>
+                    <div class="brand-caption">临时邮箱工作台</div>
                 </div>
             </div>
-            
-            <div class="flex items-center gap-4 text-sm font-bold">
+
+            <details class="server-menu">
+                <summary title="服务器配置">
+                    <span class="status-dot"></span>
+                    <span class="server-label">POP3 {{ publicPopServer || '读取中' }} : {{ publicPopPort || '...' }}</span>
+                </summary>
+                <div class="server-popover">
+                    <h2 class="popover-title">服务器配置</h2>
+                    <div class="server-grid">
+                        <div>
+                            <label class="field-label" for="pop-server">POP3 地址</label>
+                            <input id="pop-server" v-model="publicPopServer" type="text" class="control" placeholder="mail.example.com">
+                        </div>
+                        <div>
+                            <label class="field-label" for="pop-port">端口</label>
+                            <input id="pop-port" v-model="publicPopPort" type="number" class="control" placeholder="110">
+                        </div>
+                    </div>
+                    <button @click="saveSystemConfig" class="btn btn-primary" style="width: 100%; margin-top: 10px;">保存配置</button>
+                </div>
+            </details>
+
+            <div class="top-user">
                 <template v-if="currentUser">
-                    <span class="text-green-400">👋 你好，{{ currentUser.username }} (云端同步中)</span>
-                    <button @click="logout" class="text-gray-500 hover:text-red-400 transition">退出</button>
+                    <div class="user-copy">
+                        <div class="user-name">{{ currentUser.username }}</div>
+                        <div class="user-state">云端同步已连接</div>
+                    </div>
+                    <button @click="logout" class="btn btn-secondary">退出</button>
                 </template>
                 <template v-else>
-                    <span class="text-gray-500">👤 游客模式 (仅存本地)</span>
-                    <button @click="showAuthModal = true; authMode = 'login'" class="bg-[#262626] hover:bg-[#333] border border-[#404040] px-4 py-1.5 rounded-lg transition text-white">
-                        登录 / 注册
-                    </button>
+                    <div class="user-copy">
+                        <div class="user-name">游客模式</div>
+                        <div class="user-state">邮箱仅保存在当前设备</div>
+                    </div>
+                    <button @click="showAuthModal = true; authMode = 'login'" class="btn btn-secondary">登录 / 注册</button>
                 </template>
             </div>
-        </div>
+        </header>
 
-        <div class="flex flex-1 overflow-hidden">
-            <div class="w-1/3 min-w-[320px] border-r border-[#262626] bg-[#0f0f0f] flex flex-col p-4 gap-4">
-                
-                <div class="bg-[#191919] border border-[#262626] p-4 rounded-xl shrink-0 space-y-4">
-                    <div class="flex justify-between items-center">
-                        <h2 class="font-bold text-gray-200">快速生成</h2>
-                        <div class="flex items-center gap-3 text-xs">
-                            <button @click="isAddingDomain = !isAddingDomain" class="text-gray-500 hover:text-blue-400">添加域名</button>
-                            <button v-if="selectedDomain" @click="deleteSelectedDomain" class="text-gray-500 hover:text-red-400">删除当前</button>
+        <main class="workspace" :data-mobile-view="mobileView">
+            <aside class="pane account-pane">
+                <section class="composer">
+                    <div class="section-heading">
+                        <h2>新建邮箱</h2>
+                        <div class="inline-actions">
+                            <button @click="isAddingDomain = !isAddingDomain" class="btn btn-quiet">{{ isAddingDomain ? '取消' : '添加域名' }}</button>
+                            <button v-if="selectedDomain && !isAddingDomain" @click="deleteSelectedDomain" class="btn btn-quiet btn-danger" title="删除当前域名">删除</button>
                         </div>
                     </div>
 
-                    <div v-if="isAddingDomain" class="flex gap-2">
-                        <input v-model="newDomainInput" type="text" placeholder="输入邮箱后缀 (例: a.com)" @keyup.enter="addNewDomain" class="input-dark rounded px-3 py-1.5 text-sm flex-1">
-                        <button @click="addNewDomain" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-sm font-bold">+</button>
+                    <div v-if="isAddingDomain" class="domain-add-grid">
+                        <input v-model="newDomainInput" type="text" class="control" placeholder="例如 mail.example.com" @keyup.enter="addNewDomain">
+                        <button @click="addNewDomain" class="btn btn-primary btn-icon" aria-label="添加域名" title="添加域名">+</button>
                     </div>
 
-                    <div v-else class="flex gap-2">
-                        <input v-model="prefix" type="text" placeholder="自定义前缀 (留空随机)" class="input-dark rounded px-3 py-2 text-sm flex-1 w-1/2">
-                        <select v-model="selectedDomain" class="input-dark rounded px-2 py-2 text-sm font-mono outline-none w-1/2 cursor-pointer">
-                            <option v-if="domains.length === 0" value="" disabled>暂无域名</option>
-                            <option v-for="dom in domains" :key="dom" :value="dom">@{{ dom }}</option>
-                        </select>
-                    </div>
+                    <template v-else>
+                        <div class="generate-grid">
+                            <input v-model="prefix" type="text" class="control prefix-control" placeholder="自定义前缀，留空随机">
+                            <select v-model="selectedDomain" class="control" aria-label="邮箱域名">
+                                <option v-if="domains.length === 0" value="" disabled>暂无域名</option>
+                                <option v-for="dom in domains" :key="dom" :value="dom">@{{ dom }}</option>
+                            </select>
+                            <button @click="isAddingDomain = true" class="btn btn-secondary btn-icon" aria-label="添加域名" title="添加域名">+</button>
+                        </div>
+                        <button @click="createAccount" class="btn btn-primary btn-generate">生成邮箱</button>
+                    </template>
+                </section>
 
-                    <button @click="createAccount" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg text-sm font-bold shadow-lg transition flex items-center justify-center gap-2">
-                        ⚡ 生成专属邮箱
+                <div class="accounts-head">
+                    <span class="toolbar-title">邮箱账号</span>
+                    <span class="count-badge">{{ accounts.length }}</span>
+                </div>
+
+                <div v-if="accounts.length" class="account-list">
+                    <div v-for="(acc, idx) in accounts" :key="acc.email"
+                         @click="selectAccount(acc)"
+                         :class="['account-item', { active: activeAccount && activeAccount.email === acc.email }]">
+                        <input v-model="acc.remark" @change="syncData" @click.stop @focus="selectAccount(acc)"
+                               type="text" class="remark-input" placeholder="添加备注">
+                        <div class="account-email">{{ acc.email }}</div>
+                        <div class="account-password">密码 <strong>{{ acc.password }}</strong></div>
+                        <button @click.stop="removeAccount(idx)" class="btn btn-quiet btn-danger btn-icon account-remove" aria-label="删除邮箱" title="删除邮箱">×</button>
+                    </div>
+                </div>
+                <div v-else class="empty-list">
+                    <div>
+                        <div class="empty-mark">+</div>
+                        <p class="empty-title">暂无邮箱</p>
+                        <p class="empty-copy">在上方生成第一个邮箱</p>
+                    </div>
+                </div>
+            </aside>
+
+            <section class="pane inbox-pane">
+                <div class="pane-header">
+                    <button @click="mobileView = 'accounts'" class="btn btn-quiet btn-icon mobile-only" aria-label="返回邮箱账号" title="返回邮箱账号">←</button>
+                    <div class="pane-title-wrap">
+                        <div class="pane-kicker">当前邮箱</div>
+                        <h2 class="pane-title">{{ activeAccount ? activeAccount.email : '未选择邮箱' }}</h2>
+                        <div v-if="activeAccount" class="pane-meta">密码 {{ activeAccount.password }}</div>
+                    </div>
+                    <button v-if="activeAccount" @click="copyActiveConfig" class="btn btn-secondary" title="复制 POP3 配置">⧉ <span>POP3</span></button>
+                </div>
+
+                <div class="inbox-toolbar">
+                    <span class="toolbar-title">收件箱</span>
+                    <span :class="['sync-state', { loading }]">
+                        <span class="status-dot"></span>
+                        {{ loading ? '正在同步' : '实时同步' }}
+                    </span>
+                </div>
+
+                <div v-if="!activeAccount" class="empty-list">
+                    <div>
+                        <div class="empty-mark">@</div>
+                        <p class="empty-title">请选择邮箱</p>
+                    </div>
+                </div>
+                <div v-else-if="emails.length === 0" class="empty-list">
+                    <div>
+                        <div class="empty-mark">…</div>
+                        <p class="empty-title">等待新邮件</p>
+                        <p class="empty-copy">收件箱会自动刷新</p>
+                    </div>
+                </div>
+                <div v-else class="mail-list">
+                    <button v-for="(mail, idx) in emails" :key="mail.id || idx"
+                            @click="openMail(mail)"
+                            :class="['mail-row', { active: readingMail === mail }]">
+                        <span class="mail-from" :title="mail.from">{{ mail.from.split('<')[0] || mail.from }}</span>
+                        <span class="mail-date">{{ mail.date.split(' ').slice(1,4).join(' ') || mail.date }}</span>
+                        <span class="mail-subject">{{ mail.subject || '无主题' }}</span>
+                        <span class="mail-snippet">{{ mail.snippet }}</span>
                     </button>
                 </div>
+            </section>
 
-                <div class="flex-1 overflow-y-auto bg-[#191919] border border-[#262626] rounded-xl p-2">
-                    <div class="space-y-1">
-                        <div v-for="(acc, idx) in accounts" :key="idx" 
-                             @click="selectAccount(acc)"
-                             :class="activeAccount && activeAccount.email === acc.email ? 'bg-blue-900/40 border-blue-500/50' : 'bg-[#141414] border-[#262626] hover:bg-[#222]'"
-                             class="border rounded-lg p-3 cursor-pointer transition flex justify-between items-center group relative">
-                            
-                            <div class="overflow-hidden w-full pr-6 flex flex-col">
-                                <input v-model="acc.remark" @change="syncData" @click.stop @focus="selectAccount(acc)" 
-                                       type="text" placeholder="✏️ 点击添加备注..." 
-                                       class="bg-transparent text-yellow-500 text-sm font-bold w-full outline-none placeholder-gray-600 mb-1.5 border-b border-transparent hover:border-[#333] focus:border-yellow-500 transition-colors pb-0.5 truncate">
-                                
-                                <div class="font-mono text-sm text-gray-200 font-bold truncate">{{ acc.email }}</div>
-                                <div class="font-mono text-xs text-gray-500 mt-1 truncate">密: <span class="text-green-500/80">{{ acc.password }}</span></div>
-                            </div>
-                            
-                            <button @click.stop="removeAccount(idx)" class="absolute right-3 top-1/2 -translate-y-1/2 text-red-500 opacity-0 group-hover:opacity-100 transition hover:text-red-400 bg-[#141414] p-1 rounded">
-                                ✖
-                            </button>
-                        </div>
+            <article class="pane reader-pane">
+                <div v-if="!readingMail" class="reader-empty">
+                    <div>
+                        <div class="empty-mark">信</div>
+                        <p class="empty-title">选择一封邮件</p>
+                        <p class="empty-copy">邮件正文将在这里打开</p>
                     </div>
                 </div>
 
-            </div>
-
-            <div class="flex-1 bg-[#0a0a0a] flex flex-col relative overflow-hidden">
-                
-                <div v-if="!activeAccount" class="absolute inset-0 flex items-center justify-center text-gray-600">
-                    <div class="text-center space-y-4">
-                        <div class="text-5xl">📬</div>
-                        <p>请在左侧生成或选择邮箱</p>
+                <div v-else class="reader">
+                    <div class="pane-header reader-header">
+                        <button @click="readingMail = null; mobileView = 'inbox'" class="btn btn-quiet btn-icon mobile-only" aria-label="返回收件箱" title="返回收件箱">←</button>
+                        <div class="pane-title-wrap">
+                            <h2 class="reader-title">{{ readingMail.subject || '无主题' }}</h2>
+                            <div class="reader-from">来自 {{ readingMail.from }}</div>
+                        </div>
+                        <div class="reader-date">{{ readingMail.date }}</div>
+                    </div>
+                    <div v-if="readingMail.attachments && readingMail.attachments.length" class="attachment-bar">
+                        <span class="attachment-label">附件</span>
+                        <button v-for="att in readingMail.attachments" :key="att.index"
+                                @click="downloadAttachment(att)"
+                                class="btn btn-secondary attachment-btn"
+                                :title="att.filename">
+                            ↓ {{ att.filename }} · {{ formatSize(att.size) }}
+                        </button>
+                    </div>
+                    <div class="reader-body">
+                        <iframe :srcdoc="readingMail.full_html"
+                                sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms"
+                                class="mail-frame"
+                                title="邮件正文"></iframe>
                     </div>
                 </div>
+            </article>
+        </main>
 
-                <template v-else>
-                    <div class="p-6 border-b border-[#262626] bg-[#111] shrink-0">
-                        <div class="flex justify-between items-center mb-1">
-                            <h2 class="text-2xl font-bold text-white font-mono break-all">{{ activeAccount.email }}</h2>
-                            <button @click="copyActiveConfig" class="bg-[#262626] hover:bg-[#333] border border-[#404040] text-gray-300 px-4 py-2 rounded-lg text-sm font-bold transition whitespace-nowrap">
-                                📋 复制 POP3 配置
-                            </button>
-                        </div>
-                        <div class="text-sm text-gray-500">密码: <span class="font-mono text-green-400 font-bold">{{ activeAccount.password }}</span></div>
-                    </div>
-
-                    <div v-if="!readingMail" class="flex-1 overflow-y-auto">
-                        <div class="p-6 pb-2 flex justify-between items-center sticky top-0 bg-[#0a0a0a] z-10 border-b border-[#262626]">
-                            <h3 class="text-lg font-bold">收件箱列表</h3>
-                            <div class="text-sm flex items-center gap-2 text-gray-500">
-                                <span v-if="!loading" class="inline-block w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-                                <span v-else class="inline-block w-2 h-2 rounded-full bg-yellow-500"></span>
-                                1秒同步中
-                            </div>
-                        </div>
-
-                        <div v-if="emails.length === 0" class="text-center py-20 text-gray-500">
-                            等待接收邮件...
-                        </div>
-
-                        <div v-else class="divide-y divide-[#262626]">
-                            <div v-for="(mail, idx) in emails" :key="idx" 
-                                 @click="openMail(mail)"
-                                 class="mail-row p-4 flex items-center gap-4 group">
-                                <div class="w-1/4 shrink-0 font-bold text-gray-300 truncate" :title="mail.from">{{ mail.from.split('<')[0] || mail.from }}</div>
-                                <div class="flex-1 truncate">
-                                    <span class="text-white font-bold mr-2">{{ mail.subject }}</span>
-                                    <span class="text-gray-500 text-sm">- {{ mail.snippet }}</span>
-                                </div>
-                                <div class="text-xs text-gray-600 group-hover:text-gray-400 shrink-0">{{ mail.date.split(' ').slice(1,4).join(' ') || mail.date }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div v-else class="flex-1 flex flex-col bg-[#141414] overflow-hidden">
-                        <div class="p-4 border-b border-[#333] flex items-center gap-4 bg-[#1a1a1a]">
-                            <button @click="readingMail = null" class="bg-[#333] hover:bg-[#444] text-white px-3 py-1.5 rounded flex items-center gap-2 text-sm font-bold transition">
-                                ⬅ 返回列表
-                            </button>
-                            <div class="flex-1 overflow-hidden">
-                                <h3 class="font-bold text-white text-lg truncate">{{ readingMail.subject }}</h3>
-                                <div class="text-xs text-gray-400 mt-1 truncate">发件人: {{ readingMail.from }}</div>
-                            </div>
-                            <div class="text-xs text-gray-500 shrink-0">{{ readingMail.date }}</div>
-                        </div>
-                        <div v-if="readingMail.attachments && readingMail.attachments.length" class="px-4 py-3 border-b border-[#333] bg-[#181818] flex flex-wrap items-center gap-2">
-                            <span class="text-xs text-gray-400 mr-1">附件</span>
-                            <button v-for="att in readingMail.attachments" :key="att.index"
-                                    @click="downloadAttachment(att)"
-                                    class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold transition max-w-full truncate">
-                                {{ att.filename }} ({{ formatSize(att.size) }})
-                            </button>
-                        </div>
-                        <div class="flex-1 overflow-hidden p-4">
-                            <iframe :srcdoc="readingMail.full_html" 
-                                    sandbox="allow-popups allow-popups-to-escape-sandbox allow-scripts allow-forms"
-                                    class="w-full h-full bg-white rounded-lg shadow-inner border-0"></iframe>
-                        </div>
-                    </div>
-
-                </template>
-
-            </div>
-        </div>
+        <nav class="mobile-nav" aria-label="主导航">
+            <button @click="mobileView = 'accounts'" :class="{ active: mobileView === 'accounts' }">邮箱账号</button>
+            <button @click="mobileView = activeAccount ? 'inbox' : 'accounts'" :class="{ active: mobileView === 'inbox' || mobileView === 'detail' }">收件箱</button>
+        </nav>
     </div>
 
     <script>
@@ -229,9 +618,10 @@
                 
                 const emails = ref([]);
                 const loading = ref(false);
-                let pollingTimer = null; 
-                
+                let pollingTimer = null;
+
                 const readingMail = ref(null);
+                const mobileView = ref('accounts');
 
                 watch(accounts, (val) => localStorage.setItem('savedAccounts', JSON.stringify(val)), { deep: true });
                 const saveDomains = () => localStorage.setItem('savedDomains', JSON.stringify(domains.value));
@@ -307,9 +697,10 @@
                 const logout = () => {
                     currentUser.value = null;
                     localStorage.removeItem('appUser');
-                    accounts.value = []; 
+                    accounts.value = [];
                     activeAccount.value = null;
                     readingMail.value = null;
+                    mobileView.value = 'accounts';
                 };
 
                 const fetchCloudAccounts = async () => {
@@ -402,17 +793,19 @@
                 const selectAccount = (acc) => {
                     activeAccount.value = acc;
                     emails.value = [];
-                    readingMail.value = null; 
-                    fetchEmails(); 
-                    startPolling(); 
+                    readingMail.value = null;
+                    mobileView.value = 'inbox';
+                    fetchEmails();
+                    startPolling();
                 };
 
                 const removeAccount = async (idx) => {
                     const email = accounts.value[idx].email;
                     if (activeAccount.value && activeAccount.value.email === email) { 
-                        activeAccount.value = null; 
+                        activeAccount.value = null;
                         readingMail.value = null;
-                        stopPolling(); 
+                        mobileView.value = 'accounts';
+                        stopPolling();
                     }
                     accounts.value.splice(idx, 1);
 
@@ -471,6 +864,7 @@
 
                 const openMail = (mail) => {
                     readingMail.value = mail;
+                    mobileView.value = 'detail';
                 };
 
                 const formatSize = (bytes) => {
@@ -517,7 +911,7 @@
                 return {
                     publicPopServer, publicPopPort, domains, selectedDomain, isAddingDomain, newDomainInput,
                     currentUser, showAuthModal, authMode, authForm, handleAuth, logout,
-                    prefix, accounts, activeAccount, emails, loading, syncData, readingMail,
+                    prefix, accounts, activeAccount, emails, loading, syncData, readingMail, mobileView,
                     addNewDomain, deleteSelectedDomain, createAccount, selectAccount, removeAccount, fetchEmails, copyActiveConfig, openMail,
                     formatSize, downloadAttachment,
                     saveSystemConfig // 暴露给按钮

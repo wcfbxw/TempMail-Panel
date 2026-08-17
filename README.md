@@ -21,10 +21,12 @@
 
 ## 🚀 一键极速安装指南
 
-推荐使用一台干净的 Linux 服务器（推荐 Ubuntu 20.04+ 或 Debian），请以 `root` 权限分步执行以下命令：
+推荐使用一台干净的 Linux 服务器（Debian 12+ 或 Ubuntu 22.04/24.04），请以 `root` 权限分步执行以下命令：
 
-### 1. 克隆代码仓库
+### 1. 安装 Git 并克隆代码仓库
 ```bash
+apt update
+apt install -y git
 git clone https://github.com/wcfbxw/TempMail-Panel.git
 cd TempMail-Panel
 ```
@@ -40,4 +42,4 @@ bash install.sh
 - 登录面板默认允许的邮箱后缀，例如 `edu.zitw.de`
 - 登录面板内部运行端口，默认 `8899`
 
-脚本会自动创建 `mail-login-panel` 的虚拟环境、`.env` 配置、systemd 自启服务、Nginx 反向代理和 HTTPS 证书。
+脚本会先检查并安装 Python、虚拟环境、Nginx、Certbot、`fuser` 等必要组件，然后自动创建 `mail-login-panel` 的虚拟环境、`.env` 配置、systemd 自启服务、Nginx 反向代理和 HTTPS 证书。

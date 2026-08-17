@@ -61,9 +61,63 @@ fi
 echo ""
 echo "⏳ 正在为您全自动配置网络与系统环境，请稍候..."
 
-# 2. 安装系统依赖、Nginx 服务以及 Certbot 证书工具
-apt update -y
-apt install python3 python3-venv python3-pip nginx certbot python3-certbot-nginx -y
+# 2. 检查并安装系统依赖、Nginx 服务以及 Certbot 证书工具
+if ! command -v apt-get >/dev/null 2>&1; then
+  echo "❌ 当前一键安装脚本仅支持 Debian/Ubuntu（需要 apt-get）。"
+  echo "   建议使用 Debian 12 或 Ubuntu 22.04/24.04。"
+  exit 1
+fi
+
+REQUIRED_PACKAGES=(
+  git
+  ca-certificates
+  curl
+  python3
+  python3-venv
+  python3-pip
+  nginx
+  certbot
+  python3-certbot-nginx
+  psmisc
+)
+MISSING_PACKAGES=()
+
+echo "🔎 正在检查必要组件..."
+for package in "${REQUIRED_PACKAGES[@]}"; do
+  if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q "install ok installed"; then
+    MISSING_PACKAGES+=("$package")
+  fi
+done
+
+if [ "${#MISSING_PACKAGES[@]}" -gt 0 ]; then
+  echo "📦 正在安装缺失组件: ${MISSING_PACKAGES[*]}"
+  apt-get update -y
+  DEBIAN_FRONTEND=noninteractive apt-get install -y "${MISSING_PACKAGES[@]}"
+else
+  echo "✅ 必要组件均已安装。"
+fi
+
+REQUIRED_COMMANDS=(git python3 nginx certbot fuser systemctl)
+for command_name in "${REQUIRED_COMMANDS[@]}"; do
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "❌ 组件检查失败，找不到命令: $command_name"
+    exit 1
+  fi
+done
+
+if ! python3 -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 10) else 1)'; then
+  echo "❌ Python 版本过低，当前依赖需要 Python 3.10 或更高版本。"
+  python3 --version
+  echo "   建议使用 Debian 12 或 Ubuntu 22.04/24.04。"
+  exit 1
+fi
+
+if ! python3 -m venv --help >/dev/null 2>&1; then
+  echo "❌ Python 虚拟环境不可用，请检查 python3-venv。"
+  exit 1
+fi
+
+echo "✅ 系统环境检查通过。"
 
 # 释放 25 端口，避免系统自带 MTA 抢占收信端口
 systemctl disable --now exim4 2>/dev/null || true

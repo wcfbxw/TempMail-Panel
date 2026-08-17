@@ -25,7 +25,7 @@
 
 ### 1. 克隆代码仓库
 ```bash
-git clone [https://github.com/wcfbxw/TempMail-Panel.git](https://github.com/wcfbxw/TempMail-Panel.git)
+git clone https://github.com/wcfbxw/TempMail-Panel.git
 cd TempMail-Panel
 ```
 ### 启动全自动安装脚本（无需执行权限）

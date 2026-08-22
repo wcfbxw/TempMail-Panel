@@ -307,28 +307,70 @@ def make_preview(text: str, length: int = 160) -> str:
     return text
 
 
-def extract_verification_code(subject: str, text: str, html: str) -> Optional[str]:
-    source = " ".join(
-        [
-            subject or "",
-            text or "",
-            html_to_text(html or ""),
-        ]
+VERIFICATION_LABEL = r"(?:验证码|校验码|动态码|安全码|一次性(?:密码|验证码)|verification[\s_-]*code|security[\s_-]*code|login[\s_-]*code|authentication[\s_-]*code|confirmation[\s_-]*code|access[\s_-]*code|one[\s_-]*time(?:[\s_-]*(?:password|code))?|otp|passcode|pin[\s_-]*code|(?:your|the)[\s_-]+code)"
+CODE_CANDIDATE = r"(?<![A-Za-z0-9])([A-Za-z0-9]{4,10})(?![A-Za-z0-9])"
+
+
+def is_plausible_verification_code(candidate: str, *, directly_labeled: bool = False) -> bool:
+    candidate = (candidate or "").strip()
+
+    if not candidate:
+        return False
+
+    if candidate.isdigit():
+        if not 4 <= len(candidate) <= 8:
+            return False
+
+        # A bare four-digit year is overwhelmingly more likely to be a date or
+        # copyright notice than an OTP. Keep it only when the label is adjacent.
+        if len(candidate) == 4 and 1900 <= int(candidate) <= 2099:
+            return directly_labeled
+
+        return True
+
+    # Alphanumeric OTPs must contain both letters and digits. This prevents
+    # ordinary words such as ACCOUNT or SECURITY from becoming candidates.
+    return (
+        6 <= len(candidate) <= 10
+        and any(ch.isalpha() for ch in candidate)
+        and any(ch.isdigit() for ch in candidate)
     )
 
-    source = re.sub(r"\s+", " ", source)
 
-    patterns = [
-        r"(?i)(?:验证码|校验码|动态码|安全码|verification code|security code|login code|code|otp|passcode)[^\d]{0,30}(\d{4,8})",
-        r"(?i)(\d{4,8})[^\d]{0,20}(?:验证码|校验码|动态码|verification code|security code|code|otp)",
-        r"\b(\d{6})\b",
-        r"\b(\d{4,8})\b",
+def extract_verification_code(subject: str, text: str, html: str) -> Optional[str]:
+    subject_text = re.sub(r"\s+", " ", subject or "").strip()
+    body_text = re.sub(
+        r"\s+",
+        " ",
+        " ".join([text or "", html_to_text(html or "")]),
+    ).strip()
+    source = " ".join(part for part in [subject_text, body_text] if part)
+
+    # High-confidence matches require a verification label immediately next to
+    # the candidate. Do not allow an arbitrary 30-character jump: that was the
+    # reason copyright years such as 2026 were previously selected.
+    separators = r"(?:\s|[:：#=\-–—]|is\b|your\b|the\b|为|是){0,16}"
+    direct_patterns = [
+        rf"(?i){VERIFICATION_LABEL}{separators}{CODE_CANDIDATE}",
+        rf"(?i){CODE_CANDIDATE}{separators}{VERIFICATION_LABEL}",
     ]
 
-    for pattern in patterns:
-        match = re.search(pattern, source)
-        if match:
-            return match.group(1)
+    for pattern in direct_patterns:
+        for match in re.finditer(pattern, source):
+            candidate = match.group(1)
+            if is_plausible_verification_code(candidate, directly_labeled=True):
+                return candidate.upper()
+
+    # Some providers place only a large isolated code in the body and put the
+    # explanation in the subject. In that case accept the usual 6-digit OTP or
+    # a mixed alphanumeric token, while still rejecting years and random IDs.
+    if re.search(rf"(?i){VERIFICATION_LABEL}", subject_text):
+        for match in re.finditer(rf"(?i){CODE_CANDIDATE}", body_text):
+            candidate = match.group(1)
+            if candidate.isdigit() and len(candidate) not in {4, 6, 8}:
+                continue
+            if is_plausible_verification_code(candidate):
+                return candidate.upper()
 
     return None
 

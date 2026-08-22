@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mail Login Panel</title>
+  <title>验证码收件箱</title>
   <style>
     * {
       box-sizing: border-box;
@@ -382,39 +382,685 @@
       }
     }
   </style>
+  <style id="otp-inbox-redesign">
+    :root {
+      --page: #f5f6fa;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --ink: #111827;
+      --muted: #667085;
+      --line: #e7e9f0;
+      --accent: #5b5bd6;
+      --accent-dark: #4646bd;
+      --accent-soft: #eeeeff;
+      --success: #0d9f6e;
+      --success-soft: #e8f8f1;
+      --danger: #d92d20;
+      --shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+    }
+
+    body {
+      background:
+        radial-gradient(circle at 8% 10%, rgba(91, 91, 214, 0.10), transparent 28%),
+        radial-gradient(circle at 92% 92%, rgba(13, 159, 110, 0.08), transparent 30%),
+        var(--page);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    .login-page {
+      padding: 32px;
+    }
+
+    .login-card {
+      width: min(940px, 100%);
+      min-height: 560px;
+      padding: 0;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 30px;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: var(--shadow);
+    }
+
+    .login-hero {
+      position: relative;
+      padding: 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      overflow: hidden;
+      color: #fff;
+      background:
+        radial-gradient(circle at 75% 15%, rgba(255, 255, 255, 0.22), transparent 28%),
+        linear-gradient(145deg, #3838a8, #6262dc 58%, #7777e8);
+    }
+
+    .login-hero::after {
+      content: "";
+      position: absolute;
+      right: -90px;
+      bottom: -110px;
+      width: 320px;
+      height: 320px;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-radius: 50%;
+      box-shadow: 0 0 0 42px rgba(255, 255, 255, 0.06), 0 0 0 84px rgba(255, 255, 255, 0.04);
+    }
+
+    .hero-brand,
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.16);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      font-size: 20px;
+      font-weight: 900;
+    }
+
+    .hero-brand strong {
+      font-size: 16px;
+      letter-spacing: -0.01em;
+    }
+
+    .hero-copy {
+      position: relative;
+      z-index: 1;
+      max-width: 330px;
+    }
+
+    .hero-copy h1 {
+      margin: 0 0 18px;
+      color: #fff;
+      font-size: clamp(34px, 4vw, 48px);
+      line-height: 1.08;
+      letter-spacing: -0.055em;
+    }
+
+    .hero-copy p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.76);
+      font-size: 15px;
+      line-height: 1.75;
+    }
+
+    .hero-feature {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 13px;
+    }
+
+    .hero-feature span {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #6ee7b7;
+      box-shadow: 0 0 0 6px rgba(110, 231, 183, 0.14);
+    }
+
+    .login-form-panel {
+      padding: 58px 52px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .eyebrow {
+      margin-bottom: 10px;
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .login-form-panel h2 {
+      margin: 0 0 10px;
+      font-size: 30px;
+      line-height: 1.2;
+      letter-spacing: -0.04em;
+    }
+
+    .login-form-panel > p {
+      margin: 0 0 30px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    .form-group {
+      margin-bottom: 17px;
+    }
+
+    .form-group label {
+      margin-bottom: 9px;
+      color: #344054;
+      font-size: 13px;
+      font-weight: 750;
+    }
+
+    .form-group input {
+      height: 52px;
+      border-color: #dfe2ea;
+      border-radius: 14px;
+      background: #fbfcfe;
+    }
+
+    .form-group input:focus {
+      border-color: var(--accent);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(91, 91, 214, 0.10);
+    }
+
+    .btn {
+      border-radius: 12px;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      box-shadow: 0 12px 24px rgba(91, 91, 214, 0.22);
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-dark);
+    }
+
+    .admin-link {
+      margin-top: 22px;
+      text-align: center;
+      font-size: 13px;
+    }
+
+    .admin-link a {
+      color: var(--muted);
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    .app {
+      background: var(--page);
+    }
+
+    .topbar {
+      height: 74px;
+      padding: 0 24px;
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(20px);
+    }
+
+    .app-brand .brand-mark {
+      width: 40px;
+      height: 40px;
+      color: #fff;
+      border: none;
+      background: linear-gradient(145deg, var(--accent), #7777e8);
+      box-shadow: 0 8px 20px rgba(91, 91, 214, 0.20);
+    }
+
+    .brand-title {
+      font-size: 17px;
+      letter-spacing: -0.025em;
+    }
+
+    .brand-subtitle {
+      max-width: 300px;
+      overflow: hidden;
+      color: var(--muted);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .top-actions {
+      gap: 8px;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      color: #475467;
+      background: #f2f4f7;
+      font-size: 12px;
+    }
+
+    .status-pill::before {
+      content: "";
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 0 4px rgba(13, 159, 110, 0.12);
+    }
+
+    .layout {
+      grid-template-columns: 410px minmax(0, 1fr);
+    }
+
+    .sidebar {
+      border-color: var(--line);
+      background: rgba(250, 251, 253, 0.94);
+      backdrop-filter: blur(18px);
+    }
+
+    .sidebar-head {
+      padding: 18px 18px 14px;
+      display: block;
+      border-color: var(--line);
+      background: rgba(255, 255, 255, 0.72);
+    }
+
+    .sidebar-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .sidebar-title {
+      font-size: 16px;
+      font-weight: 820;
+      letter-spacing: -0.025em;
+    }
+
+    .mail-count {
+      padding: 4px 8px;
+      color: var(--muted);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 750;
+    }
+
+    .sidebar-controls {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .filter-tabs {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 12px;
+      background: #eef0f5;
+    }
+
+    .filter-tab {
+      border: none;
+      padding: 8px 12px;
+      border-radius: 9px;
+      color: var(--muted);
+      background: transparent;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .filter-tab.active {
+      color: var(--ink);
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .sidebar-actions {
+      display: flex;
+      gap: 7px;
+    }
+
+    .sidebar-actions .btn {
+      padding: 9px 11px;
+      font-size: 12px;
+    }
+
+    .btn-success {
+      color: var(--accent-dark);
+      background: var(--accent-soft);
+    }
+
+    .btn-success:hover {
+      background: #dfdfff;
+    }
+
+    .mail-list {
+      padding: 12px 14px 24px;
+    }
+
+    .mail-item {
+      margin-bottom: 9px;
+      padding: 15px;
+      border-color: transparent;
+      border-radius: 16px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
+    }
+
+    .mail-item:hover {
+      border-color: #d9d9ff;
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.075);
+    }
+
+    .mail-item.active {
+      border-color: #b7b7f5;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.10), 0 12px 25px rgba(15, 23, 42, 0.07);
+    }
+
+    .mail-card-top,
+    .mail-card-bottom {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .mail-subject {
+      margin: 0;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+
+    .code-badge {
+      flex-shrink: 0;
+      padding: 4px 7px;
+      color: var(--success);
+      border-radius: 7px;
+      background: var(--success-soft);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .mail-meta {
+      margin: 7px 0 0;
+      font-size: 11px;
+    }
+
+    .mail-preview {
+      margin-top: 10px;
+      color: #667085;
+      font-size: 12px;
+      -webkit-line-clamp: 2;
+    }
+
+    .code-box {
+      margin: 12px 0 0;
+      padding: 11px 12px;
+      color: #067647;
+      border: 1px solid #cceedd;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #edfbf4, #f5fdf9);
+      font-size: 20px;
+      letter-spacing: 0.12em;
+    }
+
+    .copy-small {
+      padding: 7px 10px;
+      color: #fff;
+      border-radius: 8px;
+      background: var(--success);
+      font-weight: 750;
+    }
+
+    .list-empty {
+      min-height: 280px;
+      padding: 44px 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .empty-icon {
+      width: 54px;
+      height: 54px;
+      margin-bottom: 16px;
+      display: grid;
+      place-items: center;
+      color: var(--accent);
+      border-radius: 18px;
+      background: var(--accent-soft);
+      font-size: 24px;
+    }
+
+    .list-empty strong {
+      margin-bottom: 7px;
+      font-size: 14px;
+    }
+
+    .list-empty span {
+      max-width: 230px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .content {
+      background: #f4f5f8;
+    }
+
+    .empty {
+      padding: 30px;
+      flex-direction: column;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .empty strong {
+      margin-bottom: 8px;
+      color: #344054;
+      font-size: 16px;
+    }
+
+    .empty span {
+      font-size: 13px;
+    }
+
+    .detail-head {
+      padding: 22px 28px 20px;
+      border-color: var(--line);
+    }
+
+    .detail-title {
+      margin-bottom: 14px;
+      font-size: 22px;
+      line-height: 1.35;
+    }
+
+    .detail-info {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .detail-code {
+      max-width: 420px;
+      margin-top: 14px;
+    }
+
+    .detail-code .code-box {
+      margin: 0;
+    }
+
+    .detail-body {
+      padding: 18px 20px 20px;
+    }
+
+    .mail-frame {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.07);
+    }
+
+    .error {
+      color: var(--danger);
+    }
+
+    @media (max-width: 900px) {
+      .login-card {
+        width: min(520px, 100%);
+        min-height: auto;
+        grid-template-columns: 1fr;
+      }
+
+      .login-hero {
+        min-height: 210px;
+        padding: 30px;
+      }
+
+      .hero-copy h1 {
+        margin-top: 35px;
+        font-size: 32px;
+      }
+
+      .hero-feature {
+        display: none;
+      }
+
+      .login-form-panel {
+        padding: 34px 30px 38px;
+      }
+
+      .topbar {
+        height: 66px;
+        padding: 0 14px;
+        flex-direction: row;
+        align-items: center;
+      }
+
+      .status-pill {
+        display: none;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .sidebar {
+        height: 44vh;
+      }
+
+      .content {
+        height: 56vh;
+      }
+
+      .detail-head {
+        padding: 16px 18px;
+      }
+
+      .detail-title {
+        font-size: 18px;
+      }
+
+      .detail-body {
+        padding: 10px;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .login-page {
+        padding: 14px;
+      }
+
+      .login-hero {
+        display: none;
+      }
+
+      .login-card {
+        border-radius: 22px;
+      }
+
+      .login-form-panel {
+        padding: 36px 24px;
+      }
+
+      .brand-subtitle {
+        max-width: 170px;
+      }
+
+      .sidebar-controls {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .filter-tabs {
+        display: flex;
+      }
+
+      .filter-tab {
+        flex: 1;
+      }
+
+      .sidebar-actions .btn {
+        flex: 1;
+      }
+    }
+  </style>
 </head>
 <body>
   <div id="loginPage" class="login-page">
     <div class="login-card">
-      <h1>邮箱登录</h1>
-      <p>请输入邮箱账号和密码，系统会自动连接本机 POP 服务。</p>
+      <section class="login-hero">
+        <div class="hero-brand">
+          <div class="brand-mark">M</div>
+          <strong>Mailroom</strong>
+        </div>
+        <div class="hero-copy">
+          <h1>验证码，<br />一眼找到。</h1>
+          <p>自动筛选验证码邮件，减少无关内容干扰。新邮件到达后，无需反复翻找正文。</p>
+        </div>
+        <div class="hero-feature"><span></span>安全连接 · 自动刷新 · 一键复制</div>
+      </section>
 
-      <div class="form-group">
-        <label>邮箱账号</label>
-        <input id="emailInput" type="email" placeholder="user@edu.zitw.de" autocomplete="username" />
-      </div>
+      <section class="login-form-panel">
+        <div class="eyebrow">Secure mailbox</div>
+        <h2>登录邮箱</h2>
+        <p>使用邮箱账号和密码连接收件箱。登录信息仅用于本次会话。</p>
 
-      <div class="form-group">
-        <label>邮箱密码</label>
-        <input id="passwordInput" type="password" placeholder="请输入邮箱密码" autocomplete="current-password" />
-      </div>
+        <div class="form-group">
+          <label for="emailInput">邮箱账号</label>
+          <input id="emailInput" type="email" placeholder="user@edu.zitw.de" autocomplete="username" />
+        </div>
 
-      <button id="loginBtn" class="btn btn-primary">登录邮箱</button>
+        <div class="form-group">
+          <label for="passwordInput">邮箱密码</label>
+          <input id="passwordInput" type="password" placeholder="请输入邮箱密码" autocomplete="current-password" />
+        </div>
 
-      
-      <div style="margin-top:18px;text-align:center;font-size:13px;">
-        <a href="/admin" style="color:#4f46e5;text-decoration:none;font-weight:700;">管理员登录</a>
-      </div>
-
-      <div id="loginError" class="error hidden"></div>
+        <button id="loginBtn" class="btn btn-primary">登录邮箱</button>
+        <div class="admin-link"><a href="/admin">管理员登录</a></div>
+        <div id="loginError" class="error hidden"></div>
+      </section>
     </div>
   </div>
 
   <div id="appPage" class="app hidden">
     <div class="topbar">
-      <div class="brand">
-        <div class="brand-title">Mail Login Panel</div>
-        <div id="userEmail" class="brand-subtitle"></div>
+      <div class="app-brand">
+        <div class="brand-mark">M</div>
+        <div class="brand">
+          <div class="brand-title">验证码收件箱</div>
+          <div id="userEmail" class="brand-subtitle"></div>
+        </div>
       </div>
 
       <div class="top-actions">
@@ -426,8 +1072,20 @@
     <div class="layout">
       <aside class="sidebar">
         <div class="sidebar-head">
-          <button id="waitCodeBtn" class="btn btn-success">等待验证码</button>
-          <button id="refreshBtn" class="btn btn-light">刷新</button>
+          <div class="sidebar-title-row">
+            <div class="sidebar-title">收件箱</div>
+            <div id="mailCount" class="mail-count">0 封</div>
+          </div>
+          <div class="sidebar-controls">
+            <div class="filter-tabs" aria-label="邮件筛选">
+              <button id="codeFilterBtn" class="filter-tab active" type="button">验证码</button>
+              <button id="allFilterBtn" class="filter-tab" type="button">全部邮件</button>
+            </div>
+            <div class="sidebar-actions">
+              <button id="waitCodeBtn" class="btn btn-success">加速刷新</button>
+              <button id="refreshBtn" class="btn btn-light">刷新</button>
+            </div>
+          </div>
         </div>
 
         <div id="mailList" class="mail-list">
@@ -436,7 +1094,11 @@
       </aside>
 
       <main class="content">
-        <div id="emptyState" class="empty">点击左侧邮件查看内容</div>
+        <div id="emptyState" class="empty">
+          <div class="empty-icon">✦</div>
+          <strong>选择一封邮件</strong>
+          <span>邮件内容会在这里显示</span>
+        </div>
 
         <div id="mailDetail" class="mail-detail hidden">
           <div class="detail-head">
@@ -464,6 +1126,7 @@
     let currentEmail = sessionStorage.getItem("mail_panel_email") || "";
     let mails = [];
     let selectedUidl = "";
+    let activeFilter = "codes";
     let pollTimer = null;
     let fastUntil = 0;
 
@@ -475,6 +1138,9 @@
     const loginError = document.getElementById("loginError");
     const userEmail = document.getElementById("userEmail");
     const mailList = document.getElementById("mailList");
+    const mailCount = document.getElementById("mailCount");
+    const codeFilterBtn = document.getElementById("codeFilterBtn");
+    const allFilterBtn = document.getElementById("allFilterBtn");
     const waitCodeBtn = document.getElementById("waitCodeBtn");
     const refreshBtn = document.getElementById("refreshBtn");
     const logoutBtn = document.getElementById("logoutBtn");
@@ -605,13 +1271,39 @@
       }, delay);
     }
 
+    function getVisibleMails() {
+      return activeFilter === "codes" ? mails.filter(mail => Boolean(mail.code)) : mails;
+    }
+
+    function showNoSelection() {
+      selectedUidl = "";
+      mailDetail.classList.add("hidden");
+      emptyState.classList.remove("hidden");
+    }
+
     function renderMailList() {
-      if (!mails.length) {
-        mailList.innerHTML = '<div class="loading">暂无邮件</div>';
+      const visibleMails = getVisibleMails();
+      const codeCount = mails.filter(mail => Boolean(mail.code)).length;
+      mailCount.textContent = activeFilter === "codes"
+        ? `${codeCount} 个验证码`
+        : `${mails.length} 封邮件`;
+
+      if (!visibleMails.length) {
+        const title = activeFilter === "codes" ? "暂未收到验证码" : "暂无邮件";
+        const hint = activeFilter === "codes"
+          ? "系统会自动刷新；普通邮件可在“全部邮件”中查看"
+          : "新邮件到达后会自动显示在这里";
+        mailList.innerHTML = `
+          <div class="list-empty">
+            <div class="empty-icon">✦</div>
+            <strong>${title}</strong>
+            <span>${hint}</span>
+          </div>
+        `;
         return;
       }
 
-      mailList.innerHTML = mails.map(mail => {
+      mailList.innerHTML = visibleMails.map(mail => {
         const active = mail.uidl === selectedUidl ? "active" : "";
         const codeHtml = mail.code ? `
           <div class="code-box">
@@ -622,7 +1314,10 @@
 
         return `
           <div class="mail-item ${active}" data-uidl="${escapeHtml(mail.uidl)}">
-            <div class="mail-subject">${escapeHtml(mail.subject || "无主题")}</div>
+            <div class="mail-card-top">
+              <div class="mail-subject">${escapeHtml(mail.subject || "无主题")}</div>
+              ${mail.code ? '<span class="code-badge">验证码</span>' : ''}
+            </div>
             <div class="mail-meta">${escapeHtml(mail.from_name || mail.from || "未知发件人")} · ${escapeHtml(formatDate(mail.date))}</div>
             ${codeHtml}
             <div class="mail-preview">${escapeHtml(mail.preview || "")}</div>
@@ -640,10 +1335,17 @@
       try {
         const data = await request("/api/mail/list?limit=30");
         mails = data.mails || [];
+        const visibleMails = getVisibleMails();
+
+        if (selectedUidl && !visibleMails.some(mail => mail.uidl === selectedUidl)) {
+          showNoSelection();
+        }
         renderMailList();
 
-        if (!selectedUidl && mails.length) {
-          await openMail(mails[0].uidl);
+        if (!selectedUidl && visibleMails.length) {
+          await openMail(visibleMails[0].uidl);
+        } else if (!visibleMails.length) {
+          showNoSelection();
         }
       } catch (err) {
         mailList.innerHTML = `<div class="loading">读取失败：${escapeHtml(err.message)}</div>`;
@@ -726,6 +1428,22 @@
       }
     }
 
+    async function setFilter(filter) {
+      activeFilter = filter;
+      codeFilterBtn.classList.toggle("active", filter === "codes");
+      allFilterBtn.classList.toggle("active", filter === "all");
+
+      const visibleMails = getVisibleMails();
+      if (!visibleMails.some(mail => mail.uidl === selectedUidl)) {
+        showNoSelection();
+      }
+      renderMailList();
+
+      if (!selectedUidl && visibleMails.length) {
+        await openMail(visibleMails[0].uidl);
+      }
+    }
+
     async function login() {
       clearError();
 
@@ -795,6 +1513,8 @@
     });
 
     refreshBtn.addEventListener("click", () => loadMails(true));
+    codeFilterBtn.addEventListener("click", () => setFilter("codes"));
+    allFilterBtn.addEventListener("click", () => setFilter("all"));
 
     waitCodeBtn.addEventListener("click", async () => {
       startFastMode();

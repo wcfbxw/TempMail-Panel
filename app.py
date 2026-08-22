@@ -225,10 +225,19 @@ def update_sys_config(config: SysConfigModel, authorization: str = Header(None))
 
 @app.post("/api/account/create")
 def create_single_account(acc: AccountModel, authorization: str = Header(None)):
+    email = acc.email.strip().lower()
+    if not email or "@" not in email:
+        raise HTTPException(status_code=400, detail="Invalid email address")
+
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
-        cursor.execute("INSERT OR REPLACE INTO accounts (email, password, owner_token, remark) VALUES (?, ?, ?, ?)",
-                       (acc.email.lower(), acc.password, authorization, acc.remark))
+        try:
+            cursor.execute(
+                "INSERT INTO accounts (email, password, owner_token, remark) VALUES (?, ?, ?, ?)",
+                (email, acc.password, authorization, acc.remark),
+            )
+        except sqlite3.IntegrityError:
+            raise HTTPException(status_code=409, detail="Email address already exists")
         conn.commit()
     return {"status": "success"}
 

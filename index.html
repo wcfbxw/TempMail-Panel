@@ -762,6 +762,24 @@
                     if (!selectedDomain.value) isAddingDomain.value = true;
                 };
 
+                const secureRandomString = (length) => {
+                    const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+                    let result = '';
+
+                    // 252 is divisible by 36, so discarding larger byte values
+                    // avoids modulo bias while keeping the output URL-safe.
+                    while (result.length < length) {
+                        const bytes = new Uint8Array((length - result.length) * 2);
+                        crypto.getRandomValues(bytes);
+                        for (const byte of bytes) {
+                            if (byte >= 252) continue;
+                            result += chars[byte % chars.length];
+                            if (result.length === length) break;
+                        }
+                    }
+                    return result;
+                };
+
                 const createAccount = async () => {
                     if (!selectedDomain.value || domains.value.length === 0) {
                         alert("⚠️ 请先点击上方的【添加域名】，输入您解析好的邮箱后缀！");
@@ -769,25 +787,49 @@
                         return;
                     }
 
-                    let currentPrefix = prefix.value.trim();
-                    if (!currentPrefix) currentPrefix = Math.random().toString(36).substring(2, 10);
-                    const randomPassword = Math.random().toString(36).substring(2, 10).toUpperCase();
-                    
-                    const newAcc = { email: `${currentPrefix}@${selectedDomain.value}`, password: randomPassword, remark: '' };
-                    
+                    const customPrefix = prefix.value.trim();
                     const headers = { 'Content-Type': 'application/json' };
                     if (currentUser.value) headers['Authorization'] = currentUser.value.token;
-                    try {
-                        await fetch('/api/account/create', {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify(newAcc)
-                        });
-                    } catch (e) {}
 
-                    accounts.value.unshift(newAcc);
-                    prefix.value = '';
-                    selectAccount(newAcc);
+                    for (let attempt = 0; attempt < 10; attempt++) {
+                        const currentPrefix = customPrefix || secureRandomString(12);
+                        const randomPassword = secureRandomString(16).toUpperCase();
+                        const newAcc = {
+                            email: `${currentPrefix}@${selectedDomain.value}`,
+                            password: randomPassword,
+                            remark: ''
+                        };
+
+                        try {
+                            const response = await fetch('/api/account/create', {
+                                method: 'POST',
+                                headers: headers,
+                                body: JSON.stringify(newAcc)
+                            });
+
+                            if (response.status === 409) {
+                                if (customPrefix) {
+                                    alert('⚠️ 该邮箱地址已经存在，请更换前缀。');
+                                    return;
+                                }
+                                continue;
+                            }
+
+                            if (!response.ok) {
+                                throw new Error(`创建邮箱失败 (${response.status})`);
+                            }
+
+                            accounts.value.unshift(newAcc);
+                            prefix.value = '';
+                            selectAccount(newAcc);
+                            return;
+                        } catch (error) {
+                            alert(`⚠️ ${error.message || '创建邮箱失败，请稍后重试。'}`);
+                            return;
+                        }
+                    }
+
+                    alert('⚠️ 无法生成唯一邮箱，请稍后重试。');
                 };
 
                 const selectAccount = (acc) => {

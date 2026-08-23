@@ -7,6 +7,7 @@ import hashlib
 import hmac
 import re
 import html
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from email import message_from_bytes
 from email.header import decode_header
@@ -18,7 +19,21 @@ from pydantic import BaseModel
 from aiosmtpd.controller import Controller
 from typing import List, Optional
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    smtp_controller = Controller(LocalMailHandler(), hostname="0.0.0.0", port=25)
+    smtp_controller.start()
+    pop3_server = None
+    try:
+        pop3_server = await asyncio.start_server(pop3_handle_client, "0.0.0.0", POP3_PORT)
+        yield
+    finally:
+        if pop3_server:
+            pop3_server.close()
+            await pop3_server.wait_closed()
+        smtp_controller.stop()
+
+app = FastAPI(lifespan=lifespan)
 BASE_DIR = Path(__file__).resolve().parent
 DB_FILE = os.getenv("LM_DB_FILE", str(BASE_DIR / "myserver_mail.db"))
 DAILY_FREE_LIMIT = max(1, int(os.getenv("LM_DAILY_FREE_LIMIT", "10")))
@@ -363,7 +378,10 @@ async def pop3_handle_client(reader, writer):
     except: pass
     finally:
         writer.close()
-        await writer.wait_closed()
+        try:
+            await writer.wait_closed()
+        except (ConnectionError, asyncio.CancelledError):
+            pass
 
 class AuthModel(BaseModel):
     username: str
@@ -699,13 +717,6 @@ def index():
         content,
         headers={"Cache-Control": "no-store, max-age=0"},
     )
-
-@app.on_event("startup")
-async def startup_event():
-    smtp_handler = LocalMailHandler()
-    smtp_controller = Controller(smtp_handler, hostname='0.0.0.0', port=25)
-    smtp_controller.start()
-    await asyncio.start_server(pop3_handle_client, '0.0.0.0', POP3_PORT)
 
 if __name__ == "__main__":
     import uvicorn

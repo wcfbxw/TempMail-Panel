@@ -3,10 +3,14 @@ import asyncio
 import sqlite3
 import poplib
 import secrets
+import hashlib
+import hmac
 import re
 import html
+from datetime import datetime, timezone
 from email import message_from_bytes
 from email.header import decode_header
+from pathlib import Path
 from urllib.parse import quote
 from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import HTMLResponse, Response
@@ -15,7 +19,10 @@ from aiosmtpd.controller import Controller
 from typing import List, Optional
 
 app = FastAPI()
-DB_FILE = "myserver_mail.db"
+BASE_DIR = Path(__file__).resolve().parent
+DB_FILE = os.getenv("LM_DB_FILE", str(BASE_DIR / "myserver_mail.db"))
+DAILY_FREE_LIMIT = max(1, int(os.getenv("LM_DAILY_FREE_LIMIT", "10")))
+PASSWORD_ITERATIONS = 260_000
 
 # ==========================================
 # 核心：动态读取系统环境变量
@@ -47,6 +54,44 @@ _current_env = get_env_config()
 POP3_PORT = int(_current_env.get("LM_PORT", 110))
 POP3_HOST = _current_env.get("LM_POP_HOST", "127.0.0.1")
 
+def utc_now_iso():
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+
+def current_usage_day():
+    return datetime.now().astimezone().date().isoformat()
+
+def hash_password(password: str):
+    salt = secrets.token_bytes(16)
+    digest = hashlib.pbkdf2_hmac(
+        "sha256",
+        password.encode("utf-8"),
+        salt,
+        PASSWORD_ITERATIONS,
+    )
+    return f"pbkdf2_sha256${PASSWORD_ITERATIONS}${salt.hex()}${digest.hex()}"
+
+def verify_password(password: str, stored_password: str):
+    if not stored_password.startswith("pbkdf2_sha256$"):
+        return hmac.compare_digest(password, stored_password), True
+    try:
+        _, iterations, salt_hex, digest_hex = stored_password.split("$", 3)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256",
+            password.encode("utf-8"),
+            bytes.fromhex(salt_hex),
+            int(iterations),
+        )
+        return hmac.compare_digest(digest.hex(), digest_hex), int(iterations) != PASSWORD_ITERATIONS
+    except (TypeError, ValueError):
+        return False, False
+
+def normalize_activation_code(code: str):
+    return re.sub(r"[^A-Z0-9]", "", (code or "").upper())
+
+def activation_code_hash(code: str):
+    normalized = normalize_activation_code(code)
+    return hashlib.sha256(normalized.encode("ascii")).hexdigest() if normalized else ""
+
 def init_db():
     with sqlite3.connect(DB_FILE) as conn:
         cursor = conn.cursor()
@@ -55,12 +100,138 @@ def init_db():
         cursor.execute('''CREATE TABLE IF NOT EXISTS pop3_configs (domain_suffix TEXT PRIMARY KEY, display_name TEXT, pop3_server TEXT, pop3_port INTEGER, use_ssl BOOLEAN, is_active BOOLEAN)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS accounts (email TEXT PRIMARY KEY, password TEXT)''')
         cursor.execute('''CREATE TABLE IF NOT EXISTS web_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, token TEXT)''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS activation_codes (
+                code_hash TEXT PRIMARY KEY,
+                code_hint TEXT NOT NULL,
+                max_uses INTEGER NOT NULL DEFAULT 1,
+                used_count INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL,
+                expires_at TEXT,
+                is_active INTEGER NOT NULL DEFAULT 1
+            )
+        ''')
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS daily_generation_usage (
+                user_id INTEGER NOT NULL,
+                usage_date TEXT NOT NULL,
+                count INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY (user_id, usage_date)
+            )
+        ''')
         try: cursor.execute('ALTER TABLE accounts ADD COLUMN owner_token TEXT')
         except: pass
         try: cursor.execute('ALTER TABLE accounts ADD COLUMN remark TEXT')
         except: pass
+        try: cursor.execute('ALTER TABLE web_users ADD COLUMN is_activated INTEGER NOT NULL DEFAULT 0')
+        except: pass
+        try: cursor.execute('ALTER TABLE web_users ADD COLUMN activated_at TEXT')
+        except: pass
+        try: cursor.execute('ALTER TABLE web_users ADD COLUMN activation_code_hint TEXT')
+        except: pass
+        try: cursor.execute('ALTER TABLE web_users ADD COLUMN created_at TEXT')
+        except: pass
+        cursor.execute('CREATE UNIQUE INDEX IF NOT EXISTS idx_web_users_token ON web_users(token)')
+        cursor.execute('CREATE INDEX IF NOT EXISTS idx_accounts_owner ON accounts(owner_token)')
         conn.commit()
 init_db()
+
+def require_user(conn: sqlite3.Connection, token: Optional[str]):
+    token = (token or "").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="请先注册或登录后再生成邮箱")
+    row = conn.execute(
+        "SELECT id, username, token, COALESCE(is_activated, 0) FROM web_users WHERE token=?",
+        (token,),
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=401, detail="登录已失效，请重新登录")
+    return {
+        "id": row[0],
+        "username": row[1],
+        "token": row[2],
+        "is_activated": bool(row[3]),
+    }
+
+def quota_payload(conn: sqlite3.Connection, user):
+    if user["is_activated"]:
+        return {
+            "is_activated": True,
+            "daily_limit": None,
+            "daily_used": 0,
+            "daily_remaining": None,
+        }
+    row = conn.execute(
+        "SELECT count FROM daily_generation_usage WHERE user_id=? AND usage_date=?",
+        (user["id"], current_usage_day()),
+    ).fetchone()
+    used = row[0] if row else 0
+    return {
+        "is_activated": False,
+        "daily_limit": DAILY_FREE_LIMIT,
+        "daily_used": used,
+        "daily_remaining": max(0, DAILY_FREE_LIMIT - used),
+    }
+
+def user_payload(conn: sqlite3.Connection, user, include_token=False):
+    payload = {"username": user["username"], **quota_payload(conn, user)}
+    if include_token:
+        payload["token"] = user["token"]
+    return payload
+
+def consume_generation_quota(conn: sqlite3.Connection, user, amount=1):
+    if amount <= 0 or user["is_activated"]:
+        return
+    usage_day = current_usage_day()
+    row = conn.execute(
+        "SELECT count FROM daily_generation_usage WHERE user_id=? AND usage_date=?",
+        (user["id"], usage_day),
+    ).fetchone()
+    used = row[0] if row else 0
+    if used + amount > DAILY_FREE_LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"今日邮箱生成额度已用完（{DAILY_FREE_LIMIT}/{DAILY_FREE_LIMIT}）",
+        )
+    conn.execute('''
+        INSERT INTO daily_generation_usage (user_id, usage_date, count)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, usage_date) DO UPDATE SET count=count + excluded.count
+    ''', (user["id"], usage_day, amount))
+
+def redeem_activation_code(conn: sqlite3.Connection, user_id: int, code: str):
+    digest = activation_code_hash(code)
+    if not digest:
+        raise HTTPException(status_code=400, detail="请输入激活码")
+    row = conn.execute('''
+        SELECT code_hint, max_uses, used_count, expires_at, is_active
+        FROM activation_codes WHERE code_hash=?
+    ''', (digest,)).fetchone()
+    now = utc_now_iso()
+    if not row or not row[4] or row[2] >= row[1] or (row[3] and row[3] <= now):
+        raise HTTPException(status_code=400, detail="激活码无效、已使用或已过期")
+    new_used_count = row[2] + 1
+    conn.execute(
+        "UPDATE activation_codes SET used_count=?, is_active=? WHERE code_hash=?",
+        (new_used_count, 1 if new_used_count < row[1] else 0, digest),
+    )
+    conn.execute('''
+        UPDATE web_users
+        SET is_activated=1, activated_at=?, activation_code_hint=?
+        WHERE id=?
+    ''', (now, row[0], user_id))
+
+def normalize_mailbox_account(conn: sqlite3.Connection, acc):
+    email = (acc.email or "").strip().lower()
+    password = acc.password or ""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9._+-]{0,63}@[a-z0-9.-]+\.[a-z]{2,63}", email):
+        raise HTTPException(status_code=400, detail="邮箱格式不正确")
+    if not 6 <= len(password) <= 128:
+        raise HTTPException(status_code=400, detail="邮箱密码长度必须为 6 到 128 位")
+    domain = email.rsplit("@", 1)[1]
+    if not conn.execute("SELECT 1 FROM domains WHERE domain_name=?", (domain,)).fetchone():
+        raise HTTPException(status_code=400, detail="该邮箱域名未启用")
+    return email, password, (acc.remark or "").strip()[:200]
 
 def decode_mime_word(s):
     if not s: return ""
@@ -194,7 +365,14 @@ async def pop3_handle_client(reader, writer):
         writer.close()
         await writer.wait_closed()
 
-class AuthModel(BaseModel): username: str; password: str
+class AuthModel(BaseModel):
+    username: str
+    password: str
+    activation_code: Optional[str] = ""
+
+class ActivationRequest(BaseModel):
+    activation_code: str
+
 class POP3ConfigModel(BaseModel): domain_suffix: str; display_name: str; pop3_server: str; pop3_port: int; use_ssl: bool; is_active: bool
 class AccountModel(BaseModel): email: str; password: str; remark: Optional[str] = ""
 class SyncRequest(BaseModel): accounts: List[AccountModel]
@@ -225,73 +403,151 @@ def update_sys_config(config: SysConfigModel, authorization: str = Header(None))
 
 @app.post("/api/account/create")
 def create_single_account(acc: AccountModel, authorization: str = Header(None)):
-    email = acc.email.strip().lower()
-    if not email or "@" not in email:
-        raise HTTPException(status_code=400, detail="Invalid email address")
-
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        try:
-            cursor.execute(
-                "INSERT INTO accounts (email, password, owner_token, remark) VALUES (?, ?, ?, ?)",
-                (email, acc.password, authorization, acc.remark),
-            )
-        except sqlite3.IntegrityError:
-            raise HTTPException(status_code=409, detail="Email address already exists")
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        user = require_user(conn, authorization)
+        email, password, remark = normalize_mailbox_account(conn, acc)
+        if conn.execute("SELECT 1 FROM accounts WHERE email=?", (email,)).fetchone():
+            raise HTTPException(status_code=409, detail="该邮箱已存在，请更换前缀")
+        conn.execute(
+            "INSERT INTO accounts (email, password, owner_token, remark) VALUES (?, ?, ?, ?)",
+            (email, password, user["token"], remark),
+        )
+        consume_generation_quota(conn, user)
         conn.commit()
-    return {"status": "success"}
+        return {"status": "success", **quota_payload(conn, user)}
 
 @app.post("/api/account/unlink")
 def unlink_account(req: UnlinkRequest, authorization: str = Header(None)):
-    if not authorization: raise HTTPException(status_code=401)
     with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("UPDATE accounts SET owner_token = NULL WHERE email = ? AND owner_token = ?", (req.email.lower(), authorization))
+        user = require_user(conn, authorization)
+        conn.execute(
+            "UPDATE accounts SET owner_token = NULL WHERE email = ? AND owner_token = ?",
+            (req.email.lower(), user["token"]),
+        )
         conn.commit()
     return {"status": "success"}
 
 @app.post("/api/auth/register")
 def register(req: AuthModel):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
+    username = (req.username or "").strip()
+    password = req.password or ""
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{3,32}", username):
+        raise HTTPException(status_code=400, detail="用户名需为 3 到 32 位字母、数字、点、横线或下划线")
+    if not 6 <= len(password) <= 128:
+        raise HTTPException(status_code=400, detail="登录密码长度必须为 6 到 128 位")
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        conn.execute("BEGIN IMMEDIATE")
         try:
-            token = secrets.token_hex(16)
-            cursor.execute("INSERT INTO web_users (username, password, token) VALUES (?, ?, ?)", (req.username, req.password, token))
+            token = secrets.token_hex(32)
+            cursor = conn.execute('''
+                INSERT INTO web_users (username, password, token, is_activated, created_at)
+                VALUES (?, ?, ?, 0, ?)
+            ''', (username, hash_password(password), token, utc_now_iso()))
+            user_id = cursor.lastrowid
+            if (req.activation_code or "").strip():
+                redeem_activation_code(conn, user_id, req.activation_code)
+            user = require_user(conn, token)
             conn.commit()
-            return {"status": "success", "token": token, "username": req.username}
+            return {"status": "success", **user_payload(conn, user, include_token=True)}
         except sqlite3.IntegrityError:
+            conn.rollback()
             raise HTTPException(status_code=400, detail="用户名已存在")
 
 @app.post("/api/auth/login")
 def login(req: AuthModel):
     with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT token FROM web_users WHERE username=? AND password=?", (req.username, req.password))
-        res = cursor.fetchone()
-        if not res: raise HTTPException(status_code=401, detail="账号或密码错误")
-        return {"status": "success", "token": res[0], "username": req.username}
+        row = conn.execute('''
+            SELECT id, username, password, token, COALESCE(is_activated, 0)
+            FROM web_users WHERE username=?
+        ''', ((req.username or "").strip(),)).fetchone()
+        if not row:
+            raise HTTPException(status_code=401, detail="账号或密码错误")
+        password_ok, needs_rehash = verify_password(req.password or "", row[2])
+        if not password_ok:
+            raise HTTPException(status_code=401, detail="账号或密码错误")
+        token = row[3] or secrets.token_hex(32)
+        if needs_rehash or not row[3]:
+            conn.execute(
+                "UPDATE web_users SET password=?, token=? WHERE id=?",
+                (hash_password(req.password), token, row[0]),
+            )
+            conn.commit()
+        user = {
+            "id": row[0],
+            "username": row[1],
+            "token": token,
+            "is_activated": bool(row[4]),
+        }
+        return {"status": "success", **user_payload(conn, user, include_token=True)}
+
+@app.post("/api/auth/activate")
+def activate_account(req: ActivationRequest, authorization: str = Header(None)):
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        user = require_user(conn, authorization)
+        if user["is_activated"]:
+            return {"status": "success", **user_payload(conn, user)}
+        redeem_activation_code(conn, user["id"], req.activation_code)
+        user = require_user(conn, user["token"])
+        conn.commit()
+        return {"status": "success", **user_payload(conn, user)}
+
+@app.get("/api/user/status")
+def get_user_status(authorization: str = Header(None)):
+    with sqlite3.connect(DB_FILE) as conn:
+        user = require_user(conn, authorization)
+        return user_payload(conn, user)
 
 @app.get("/api/user/accounts")
 def get_user_accounts(authorization: str = Header(None)):
-    if not authorization: return {"accounts": []}
     with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
-        cursor.execute("SELECT email, password, remark FROM accounts WHERE owner_token=? ORDER BY rowid DESC", (authorization,))
-        return {"accounts": [{"email": r[0], "password": r[1], "remark": r[2] or ""} for r in cursor.fetchall()]}
+        user = require_user(conn, authorization)
+        rows = conn.execute(
+            "SELECT email, password, remark FROM accounts WHERE owner_token=? ORDER BY rowid DESC",
+            (user["token"],),
+        ).fetchall()
+        return {"accounts": [{"email": r[0], "password": r[1], "remark": r[2] or ""} for r in rows]}
 
 @app.post("/api/user/sync")
 def sync_accounts(req: SyncRequest, authorization: str = Header(None)):
-    with sqlite3.connect(DB_FILE) as conn:
-        cursor = conn.cursor()
+    with sqlite3.connect(DB_FILE, timeout=10) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        user = require_user(conn, authorization)
+        normalized_accounts = {}
         for acc in req.accounts:
-            cursor.execute('''
-                INSERT INTO accounts (email, password, owner_token, remark) 
-                VALUES (?, ?, ?, ?)
-                ON CONFLICT(email) DO UPDATE SET 
-                owner_token=excluded.owner_token, remark=excluded.remark
-            ''', (acc.email.lower(), acc.password, authorization, acc.remark))
+            email, password, remark = normalize_mailbox_account(conn, acc)
+            normalized_accounts[email] = (password, remark)
+
+        new_count = 0
+        existing_accounts = {}
+        for email, (password, _) in normalized_accounts.items():
+            row = conn.execute(
+                "SELECT password, owner_token FROM accounts WHERE email=?",
+                (email,),
+            ).fetchone()
+            existing_accounts[email] = row
+            if not row:
+                new_count += 1
+            elif row[1] not in (None, user["token"]):
+                raise HTTPException(status_code=409, detail=f"邮箱 {email} 已属于其他账号")
+            elif row[1] is None and not hmac.compare_digest(row[0], password):
+                raise HTTPException(status_code=409, detail=f"邮箱 {email} 的凭证不匹配")
+
+        consume_generation_quota(conn, user, new_count)
+        for email, (password, remark) in normalized_accounts.items():
+            if existing_accounts[email]:
+                conn.execute(
+                    "UPDATE accounts SET owner_token=?, remark=? WHERE email=?",
+                    (user["token"], remark, email),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO accounts (email, password, owner_token, remark) VALUES (?, ?, ?, ?)",
+                    (email, password, user["token"], remark),
+                )
         conn.commit()
-    return {"status": "success"}
+        return {"status": "success", **quota_payload(conn, user)}
 
 @app.post("/api/admin/config")
 def save_config(config: POP3ConfigModel):

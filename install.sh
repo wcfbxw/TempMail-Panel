@@ -130,6 +130,7 @@ LM_TITLE="$USER_TITLE"
 LM_WEB_DOMAIN="$WEB_DOMAIN"
 LM_POP_HOST="$POP_HOST"
 LM_PORT=$USER_PORT
+LM_DAILY_FREE_LIMIT=10
 EOF
 
 # 4. 创建 Python 隔离虚拟环境并安装核心依赖库
@@ -211,11 +212,23 @@ if [[ "$INSTALL_LOGIN_PANEL" =~ ^[Yy]$ ]]; then
 fi
 rm -f /etc/nginx/sites-enabled/default
 
+nginx -t
+systemctl reload nginx
+
 # 6. 【核心优化】调用 Certbot 自动向官方接口申请免费 SSL 证书并魔改 Nginx 强制开启 HTTPS 加密锁
 echo "🔒 正在为您向 Let's Encrypt 官方接口申请永久免费的 SSL 安全证书..."
-certbot --nginx -d $WEB_DOMAIN --email $USER_EMAIL --agree-tos --no-eff-email --non-interactive
+WEB_SCHEME="https"
+if ! certbot --nginx -d "$WEB_DOMAIN" --email "$USER_EMAIL" --agree-tos --no-eff-email --non-interactive; then
+  WEB_SCHEME="http"
+  echo "⚠️ 主面板 SSL 证书申请失败，将继续完成服务安装。"
+  echo "   请确认 DNS 已解析到本机且云防火墙已对公网开放 80、443 端口，再重新运行 Certbot。"
+fi
 if [[ "$INSTALL_LOGIN_PANEL" =~ ^[Yy]$ ]]; then
-  certbot --nginx -d $LOGIN_DOMAIN --email $USER_EMAIL --agree-tos --no-eff-email --non-interactive
+  LOGIN_SCHEME="https"
+  if ! certbot --nginx -d "$LOGIN_DOMAIN" --email "$USER_EMAIL" --agree-tos --no-eff-email --non-interactive; then
+    LOGIN_SCHEME="http"
+    echo "⚠️ 独立登录面板 SSL 证书申请失败，将继续完成服务安装。"
+  fi
 fi
 
 # 7. 配置 systemd 开机自启服务
@@ -272,14 +285,19 @@ fi
 nginx -t
 systemctl restart nginx
 
+echo "🔑 正在本服务器生成首个一次性账号激活码（完整激活码仅显示这一次）..."
+"$INSTALL_DIR/venv/bin/python" "$INSTALL_DIR/manage_activation_codes.py" generate --count 1
+
 echo "=================================================="
 echo "✅ LightningMail 闪电邮一键全自动化部署成功！"
-echo "🌐 加密面板管理网址: https://$WEB_DOMAIN"
+echo "🌐 面板管理网址: $WEB_SCHEME://$WEB_DOMAIN"
 echo "🏷️ 系统面板名称: $USER_TITLE"
 echo "🔌 软件/客户端连接 POP3 地址: $POP_HOST  端口: $USER_PORT"
 if [[ "$INSTALL_LOGIN_PANEL" =~ ^[Yy]$ ]]; then
-  echo "🔐 独立登录邮箱面板: https://$LOGIN_DOMAIN"
+  echo "🔐 独立登录邮箱面板: $LOGIN_SCHEME://$LOGIN_DOMAIN"
   echo "👤 登录面板管理员账号: $LOGIN_ADMIN_USER"
 fi
+echo "👥 未激活账号每天最多生成 10 个邮箱；激活账号不受每日生成数量限制。"
+echo "🔑 继续生成激活码: cd $INSTALL_DIR && ./venv/bin/python manage_activation_codes.py generate"
 echo "💡 提示: 面板域名可以放心开启 Cloudflare 黄云代理来隐藏您的真实 IP 啦！"
 echo "=================================================="

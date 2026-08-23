@@ -11,7 +11,9 @@
 - 📦 **独立阅读沙盒**：底层拦截恶意脚本，完美安全渲染各类复杂的商业图文 HTML 邮件。
 - 📎 **附件下载**：支持从原始邮件中提取 PDF 等附件，例如 Stripe 发票和收据。
 - ⚡ **无感极速刷新**：WebSocket 级顺滑体验，1秒级轮询拉取，页面无闪烁。
-- ☁️ **多用户云端同步**：支持游客本地模式与账号登录云端模式，换设备数据永不丢失。
+- ☁️ **多用户云端同步**：邮箱归属账号并同步到服务器，换设备登录后仍可继续使用。
+- 🔐 **注册与激活码**：游客不能生成邮箱；无激活码也能注册登录，但每天最多生成 10 个，激活后解除每日数量限制。
+- 🧱 **服务端严格配额**：创建与同步共用原子化每日配额，无法通过刷新页面、换设备或直接调用接口绕过。
 
 ## 📦 可选组件
 
@@ -43,3 +45,30 @@ bash install.sh
 - 登录面板内部运行端口，默认 `8899`
 
 脚本会先检查并安装 Python、虚拟环境、Nginx、Certbot、`fuser` 等必要组件，然后自动创建 `mail-login-panel` 的虚拟环境、`.env` 配置、systemd 自启服务、Nginx 反向代理和 HTTPS 证书。
+
+如果 DNS、80 端口或 443 端口暂未就绪，证书申请失败不会再中断整个安装；面板会先通过 HTTP 启动，修正网络后可重新运行 Certbot。
+
+## 🔑 激活码管理
+
+安装脚本会直接在所安装服务器的数据库中生成首个一次性激活码，并且只显示一次。后续请在服务器的项目目录中管理激活码：
+
+```bash
+cd /root/TempMail-Panel
+
+# 生成一个默认的一次性、永久有效激活码
+./venv/bin/python manage_activation_codes.py generate
+
+# 批量生成 5 个、30 天内有效的激活码
+./venv/bin/python manage_activation_codes.py generate --count 5 --days 30
+
+# 生成一个最多可激活 10 个账号的激活码
+./venv/bin/python manage_activation_codes.py generate --uses 10
+
+# 查看状态（数据库不保存完整激活码，只显示末四位）
+./venv/bin/python manage_activation_codes.py list
+
+# 吊销尚未使用完的激活码
+./venv/bin/python manage_activation_codes.py revoke LM-XXXX-XXXX-XXXX-XXXX
+```
+
+用户可以在注册时不填写激活码并正常登录；这种基础账号每天最多生成 10 个新邮箱。用户以后取得有效激活码，也可以登录后点击“激活”解除每日生成数量限制。

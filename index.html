@@ -182,6 +182,8 @@
         .btn-quiet { border-color: transparent; background: transparent; color: var(--muted); }
         .btn-quiet:hover { background: var(--surface-2); color: var(--text); }
         .btn-danger:hover { background: rgba(230, 106, 116, .1); color: var(--red); }
+        .btn:disabled { cursor: not-allowed; opacity: .48; }
+        .btn:disabled:hover { background: var(--blue-strong); }
         .btn-icon { width: 36px; padding: 0; font-size: 17px; }
         .btn-generate { width: 100%; height: 40px; margin-top: 8px; }
 
@@ -312,6 +314,7 @@
         .auth-head h2 { margin: 0; font-size: 16px; }
         .auth-body { padding: 18px; }
         .auth-body .control { height: 42px; margin-bottom: 10px; }
+        .auth-code { text-transform: uppercase; }
         .auth-switch { width: 100%; margin-top: 12px; color: var(--muted); }
 
         .mobile-only, .mobile-nav { display: none; }
@@ -384,21 +387,27 @@
 <body>
     <div id="app" class="app-shell" v-cloak>
         <div v-if="showAuthModal" class="auth-overlay" @click.self="showAuthModal = false">
-            <div class="auth-dialog" role="dialog" aria-modal="true" :aria-label="authMode === 'login' ? '账号登录' : '注册账号'">
+            <div class="auth-dialog" role="dialog" aria-modal="true" :aria-label="authMode === 'login' ? '账号登录' : authMode === 'register' ? '注册账号' : '激活账号'">
                 <div class="auth-head">
-                    <h2>{{ authMode === 'login' ? '账号登录' : '注册账号' }}</h2>
+                    <h2>{{ authMode === 'login' ? '账号登录' : authMode === 'register' ? '注册账号' : '激活账号' }}</h2>
                     <button @click="showAuthModal = false" class="btn btn-quiet btn-icon" aria-label="关闭" title="关闭">×</button>
                 </div>
                 <div class="auth-body">
-                    <label class="field-label" for="auth-username">用户名</label>
-                    <input id="auth-username" v-model="authForm.username" type="text" autocomplete="username" class="control" placeholder="输入用户名">
-                    <label class="field-label" for="auth-password">密码</label>
-                    <input id="auth-password" v-model="authForm.password" type="password" autocomplete="current-password" class="control" placeholder="输入密码" @keyup.enter="handleAuth">
+                    <template v-if="authMode !== 'activate'">
+                        <label class="field-label" for="auth-username">用户名</label>
+                        <input id="auth-username" v-model="authForm.username" type="text" autocomplete="username" class="control" placeholder="输入用户名">
+                        <label class="field-label" for="auth-password">密码</label>
+                        <input id="auth-password" v-model="authForm.password" type="password" :autocomplete="authMode === 'register' ? 'new-password' : 'current-password'" class="control" placeholder="输入密码" @keyup.enter="handleAuth">
+                    </template>
+                    <template v-if="authMode !== 'login'">
+                        <label class="field-label" for="auth-code">激活码{{ authMode === 'register' ? '（选填）' : '' }}</label>
+                        <input id="auth-code" v-model="authForm.activation_code" type="text" autocomplete="off" class="control auth-code" placeholder="LM-XXXX-XXXX-XXXX-XXXX" @keyup.enter="handleAuth">
+                    </template>
                     <button @click="handleAuth" class="btn btn-primary" style="width: 100%; height: 42px;">
-                        {{ authMode === 'login' ? '登录' : '注册' }}
+                        {{ authMode === 'login' ? '登录' : authMode === 'register' ? '注册' : '立即激活' }}
                     </button>
                     <button @click="authMode = authMode === 'login' ? 'register' : 'login'" class="btn btn-quiet auth-switch">
-                        {{ authMode === 'login' ? '创建新账号' : '返回账号登录' }}
+                        {{ authMode === 'login' ? '创建新账号' : authMode === 'register' ? '返回账号登录' : '暂不激活' }}
                     </button>
                 </div>
             </div>
@@ -438,14 +447,15 @@
                 <template v-if="currentUser">
                     <div class="user-copy">
                         <div class="user-name">{{ currentUser.username }}</div>
-                        <div class="user-state">云端同步已连接</div>
+                        <div class="user-state">{{ currentUser.is_activated ? '已激活 · 不限生成' : '基础账户 · 今日剩余 ' + (currentUser.daily_remaining ?? 0) }}</div>
                     </div>
+                    <button v-if="!currentUser.is_activated" @click="authMode = 'activate'; authForm.activation_code = ''; showAuthModal = true" class="btn btn-primary">激活</button>
                     <button @click="logout" class="btn btn-secondary">退出</button>
                 </template>
                 <template v-else>
                     <div class="user-copy">
-                        <div class="user-name">游客模式</div>
-                        <div class="user-state">邮箱仅保存在当前设备</div>
+                        <div class="user-name">未登录</div>
+                        <div class="user-state">登录后可生成邮箱</div>
                     </div>
                     <button @click="showAuthModal = true; authMode = 'login'" class="btn btn-secondary">登录 / 注册</button>
                 </template>
@@ -477,7 +487,11 @@
                             </select>
                             <button @click="isAddingDomain = true" class="btn btn-secondary btn-icon" aria-label="添加域名" title="添加域名">+</button>
                         </div>
-                        <button @click="createAccount" class="btn btn-primary btn-generate">生成邮箱</button>
+                        <button @click="createAccount"
+                                :disabled="currentUser && !currentUser.is_activated && currentUser.daily_remaining <= 0"
+                                class="btn btn-primary btn-generate">
+                            {{ !currentUser ? '登录后生成' : currentUser.is_activated ? '生成邮箱' : '生成邮箱 · 今日剩余 ' + (currentUser.daily_remaining ?? 0) }}
+                        </button>
                     </template>
                 </section>
 
@@ -610,7 +624,7 @@
                 const currentUser = ref(JSON.parse(localStorage.getItem('appUser') || 'null'));
                 const showAuthModal = ref(false);
                 const authMode = ref('login');
-                const authForm = ref({ username: '', password: '' });
+                const authForm = ref({ username: '', password: '', activation_code: '' });
 
                 const prefix = ref('');
                 const accounts = ref(JSON.parse(localStorage.getItem('savedAccounts') || '[]'));
@@ -678,18 +692,41 @@
                 };
                 // ===============================================
 
+                const saveCurrentUser = (data) => {
+                    const previous = currentUser.value || {};
+                    currentUser.value = {
+                        username: data.username || previous.username,
+                        token: data.token || previous.token,
+                        is_activated: Boolean(data.is_activated),
+                        daily_limit: data.daily_limit,
+                        daily_used: data.daily_used,
+                        daily_remaining: data.daily_remaining
+                    };
+                    localStorage.setItem('appUser', JSON.stringify(currentUser.value));
+                };
+
+                const resetAuthForm = () => {
+                    authForm.value = { username: '', password: '', activation_code: '' };
+                };
+
                 const handleAuth = async () => {
-                    if(!authForm.value.username || !authForm.value.password) return alert("请填写完整");
+                    if(authMode.value === 'activate' && !authForm.value.activation_code.trim()) return alert("请输入激活码");
+                    if(authMode.value !== 'activate' && (!authForm.value.username.trim() || !authForm.value.password)) return alert("请填写用户名和密码");
                     try {
-                        const url = authMode.value === 'login' ? '/api/auth/login' : '/api/auth/register';
-                        const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(authForm.value) });
+                        const isActivation = authMode.value === 'activate';
+                        const url = isActivation ? '/api/auth/activate' : authMode.value === 'login' ? '/api/auth/login' : '/api/auth/register';
+                        const headers = { 'Content-Type': 'application/json' };
+                        if(isActivation) headers['Authorization'] = currentUser.value.token;
+                        const body = isActivation
+                            ? { activation_code: authForm.value.activation_code }
+                            : authForm.value;
+                        const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
                         const data = await res.json();
                         if(res.ok) {
-                            currentUser.value = { username: data.username, token: data.token };
-                            localStorage.setItem('appUser', JSON.stringify(currentUser.value));
+                            saveCurrentUser(data);
                             showAuthModal.value = false;
-                            authForm.value = { username: '', password: '' };
-                            await fetchCloudAccounts(); 
+                            resetAuthForm();
+                            if(!isActivation) await fetchCloudAccounts();
                         } else alert(data.detail || "操作失败");
                     } catch { alert("网络错误"); }
                 };
@@ -703,9 +740,27 @@
                     mobileView.value = 'accounts';
                 };
 
+                const refreshUserStatus = async () => {
+                    if(!currentUser.value) return;
+                    try {
+                        const res = await fetch('/api/user/status', { headers: { 'Authorization': currentUser.value.token } });
+                        if(res.status === 401) {
+                            logout();
+                            return;
+                        }
+                        if(res.ok) saveCurrentUser(await res.json());
+                    } catch (e) {
+                        console.error("账号状态拉取失败");
+                    }
+                };
+
                 const fetchCloudAccounts = async () => {
                     if(!currentUser.value) return;
                     const res = await fetch('/api/user/accounts', { headers: { 'Authorization': currentUser.value.token } });
+                    if(res.status === 401) {
+                        logout();
+                        return;
+                    }
                     if(res.ok) {
                         const data = await res.json();
                         const cloudEmails = data.accounts.map(a => a.email);
@@ -714,17 +769,24 @@
                             if(!cloudEmails.includes(loc.email)) merged.push(loc);
                         }
                         accounts.value = merged;
-                        syncData(); 
+                        await syncData(true);
                     }
                 };
 
-                const syncData = async () => {
+                const syncData = async (showError = false) => {
                     if(!currentUser.value || accounts.value.length === 0) return;
-                    fetch('/api/user/sync', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': currentUser.value.token },
-                        body: JSON.stringify({ accounts: accounts.value })
-                    }).catch(()=>{});
+                    try {
+                        const res = await fetch('/api/user/sync', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'Authorization': currentUser.value.token },
+                            body: JSON.stringify({ accounts: accounts.value })
+                        });
+                        const data = await res.json();
+                        if(res.ok) saveCurrentUser(data);
+                        else if(showError) alert(data.detail || "邮箱同步失败");
+                    } catch(e) {
+                        if(showError) alert("邮箱同步失败，请检查网络");
+                    }
                 };
 
                 const startPolling = () => {
@@ -781,15 +843,27 @@
                 };
 
                 const createAccount = async () => {
+                    if (!currentUser.value) {
+                        authMode.value = 'login';
+                        showAuthModal.value = true;
+                        alert("请先注册或登录后再生成邮箱");
+                        return;
+                    }
+                    if (!currentUser.value.is_activated && currentUser.value.daily_remaining <= 0) {
+                        alert("今日 10 个邮箱生成额度已用完，可使用激活码解除限制");
+                        return;
+                    }
                     if (!selectedDomain.value || domains.value.length === 0) {
                         alert("⚠️ 请先点击上方的【添加域名】，输入您解析好的邮箱后缀！");
                         isAddingDomain.value = true;
                         return;
                     }
 
-                    const customPrefix = prefix.value.trim();
-                    const headers = { 'Content-Type': 'application/json' };
-                    if (currentUser.value) headers['Authorization'] = currentUser.value.token;
+                    const customPrefix = prefix.value.trim().toLowerCase();
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': currentUser.value.token
+                    };
 
                     for (let attempt = 0; attempt < 10; attempt++) {
                         const currentPrefix = customPrefix || secureRandomString(12);
@@ -806,30 +880,39 @@
                                 headers: headers,
                                 body: JSON.stringify(newAcc)
                             });
+                            let data = {};
+                            try { data = await response.json(); } catch (e) {}
 
                             if (response.status === 409) {
                                 if (customPrefix) {
-                                    alert('⚠️ 该邮箱地址已经存在，请更换前缀。');
+                                    alert(data.detail || '该邮箱地址已经存在，请更换前缀');
                                     return;
                                 }
                                 continue;
                             }
 
                             if (!response.ok) {
-                                throw new Error(`创建邮箱失败 (${response.status})`);
+                                if (response.status === 401) {
+                                    logout();
+                                    authMode.value = 'login';
+                                    showAuthModal.value = true;
+                                }
+                                alert(data.detail || `邮箱生成失败 (${response.status})`);
+                                return;
                             }
 
+                            saveCurrentUser(data);
                             accounts.value.unshift(newAcc);
                             prefix.value = '';
                             selectAccount(newAcc);
                             return;
                         } catch (error) {
-                            alert(`⚠️ ${error.message || '创建邮箱失败，请稍后重试。'}`);
+                            alert("邮箱生成失败，请检查网络");
                             return;
                         }
                     }
 
-                    alert('⚠️ 无法生成唯一邮箱，请稍后重试。');
+                    alert('无法生成唯一邮箱，请稍后重试');
                 };
 
                 const selectAccount = (acc) => {
@@ -946,7 +1029,10 @@
                 onMounted(async () => {
                     await loadSystemConfig(); // 页面加载时自动拉取最新配置
                     await loadDomains();
-                    if(currentUser.value) await fetchCloudAccounts();
+                    if(currentUser.value) {
+                        await refreshUserStatus();
+                        if(currentUser.value) await fetchCloudAccounts();
+                    }
                     if (accounts.value.length > 0) selectAccount(accounts.value[0]);
                 });
 

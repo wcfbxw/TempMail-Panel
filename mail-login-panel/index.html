@@ -2,1070 +2,386 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0e1013" media="(prefers-color-scheme: dark)" />
   <title>验证码收件箱</title>
   <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: linear-gradient(135deg, #eef2ff, #f8fafc);
-      color: #111827;
-      height: 100vh;
-      overflow: hidden;
-    }
-
-    .hidden {
-      display: none !important;
-    }
-
-    .login-page {
-      height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-
-    .login-card {
-      width: 420px;
-      background: rgba(255, 255, 255, 0.92);
-      backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.8);
-      border-radius: 24px;
-      padding: 34px;
-      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.12);
-    }
-
-    .login-card h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
-      letter-spacing: -0.04em;
-    }
-
-    .login-card p {
-      margin: 0 0 28px;
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 18px;
-    }
-
-    .form-group label {
-      display: block;
-      margin-bottom: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      color: #374151;
-    }
-
-    .form-group input {
-      width: 100%;
-      height: 48px;
-      border: 1px solid #d1d5db;
-      border-radius: 14px;
-      padding: 0 14px;
-      font-size: 15px;
-      outline: none;
-      background: #fff;
-      transition: all 0.2s;
-    }
-
-    .form-group input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
-    }
-
-    .btn {
-      border: none;
-      border-radius: 14px;
-      padding: 12px 18px;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .btn-primary {
-      width: 100%;
-      height: 50px;
-      background: #4f46e5;
-      color: #fff;
-      box-shadow: 0 12px 28px rgba(79, 70, 229, 0.25);
-    }
-
-    .btn-primary:hover {
-      background: #4338ca;
-      transform: translateY(-1px);
-    }
-
-    .btn-light {
-      background: #f3f4f6;
-      color: #111827;
-    }
-
-    .btn-light:hover {
-      background: #e5e7eb;
-    }
-
-    .btn-success {
-      background: #10b981;
-      color: #fff;
-    }
-
-    .btn-success:hover {
-      background: #059669;
-    }
-
-    .error {
-      margin-top: 16px;
-      color: #dc2626;
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .app {
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .topbar {
-      height: 64px;
-      background: rgba(255, 255, 255, 0.86);
-      backdrop-filter: blur(18px);
-      border-bottom: 1px solid #e5e7eb;
-      padding: 0 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
-    }
-
-    .brand {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .brand-title {
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-    }
-
-    .brand-subtitle {
-      font-size: 12px;
-      color: #6b7280;
-    }
-
-    .top-actions {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .status-pill {
-      padding: 8px 12px;
-      background: #eef2ff;
-      color: #4338ca;
-      border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .layout {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 380px 1fr;
-      min-height: 0;
-    }
-
-    .sidebar {
-      border-right: 1px solid #e5e7eb;
-      background: rgba(255, 255, 255, 0.72);
-      backdrop-filter: blur(16px);
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .sidebar-head {
-      padding: 16px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      gap: 10px;
-    }
-
-    .mail-list {
-      flex: 1;
-      overflow: auto;
-      padding: 12px;
-    }
-
-    .mail-item {
-      border: 1px solid #e5e7eb;
-      background: #fff;
-      border-radius: 18px;
-      padding: 14px;
-      margin-bottom: 10px;
-      cursor: pointer;
-      transition: all 0.18s;
-      box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04);
-    }
-
-    .mail-item:hover {
-      transform: translateY(-1px);
-      border-color: #c7d2fe;
-      box-shadow: 0 14px 34px rgba(15, 23, 42, 0.08);
-    }
-
-    .mail-item.active {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.14);
-    }
-
-    .mail-subject {
-      font-weight: 800;
-      font-size: 14px;
-      line-height: 1.35;
-      margin-bottom: 6px;
-      color: #111827;
-    }
-
-    .mail-meta {
-      font-size: 12px;
-      color: #6b7280;
-      margin-bottom: 8px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .mail-preview {
-      font-size: 13px;
-      color: #4b5563;
-      line-height: 1.45;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-
-    .code-box {
-      margin: 10px 0;
-      padding: 10px 12px;
-      border-radius: 14px;
-      background: #ecfdf5;
-      color: #047857;
-      font-size: 20px;
-      font-weight: 900;
-      letter-spacing: 0.08em;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .copy-small {
-      border: none;
-      background: #10b981;
-      color: #fff;
-      border-radius: 10px;
-      padding: 6px 9px;
-      font-size: 12px;
-      cursor: pointer;
-    }
-
-    .content {
-      min-width: 0;
-      min-height: 0;
-      display: flex;
-      flex-direction: column;
-      background: #f8fafc;
-    }
-
-    .empty {
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #9ca3af;
-      font-size: 16px;
-    }
-
-    .mail-detail {
-      height: 100%;
-      display: flex;
-      flex-direction: column;
-      min-height: 0;
-    }
-
-    .detail-head {
-      padding: 22px 26px;
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
-      flex-shrink: 0;
-    }
-
-    .detail-title {
-      font-size: 22px;
-      font-weight: 850;
-      letter-spacing: -0.03em;
-      margin-bottom: 12px;
-      line-height: 1.3;
-    }
-
-    .detail-info {
-      display: grid;
-      gap: 6px;
-      font-size: 13px;
-      color: #4b5563;
-    }
-
-    .detail-code {
-      margin-top: 16px;
-      max-width: 360px;
-    }
-
-    .detail-body {
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
-      padding: 18px;
-    }
-
-    .mail-frame {
-      width: 100%;
-      height: 100%;
-      border: none;
-      background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 16px 50px rgba(15, 23, 42, 0.08);
-    }
-
-    .loading {
-      padding: 16px;
-      color: #6b7280;
-      font-size: 14px;
-    }
-
-    @media (max-width: 900px) {
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        height: 45vh;
-        border-right: none;
-        border-bottom: 1px solid #e5e7eb;
-      }
-
-      .content {
-        height: 55vh;
-      }
-
-      .topbar {
-        height: auto;
-        padding: 12px;
-        gap: 10px;
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .top-actions {
-        justify-content: space-between;
-      }
-    }
-  </style>
-  <style id="otp-inbox-redesign">
     :root {
-      --page: #f5f6fa;
-      --panel: #ffffff;
-      --panel-soft: #f8fafc;
-      --ink: #111827;
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f3f4f7;
+      --surface-3: #e9ebf0;
+      --border: #e4e7ec;
+      --border-strong: #d0d5dd;
+      --text: #101828;
       --muted: #667085;
-      --line: #e7e9f0;
-      --accent: #5b5bd6;
-      --accent-dark: #4646bd;
-      --accent-soft: #eeeeff;
-      --success: #0d9f6e;
-      --success-soft: #e8f8f1;
-      --danger: #d92d20;
-      --shadow: 0 24px 70px rgba(15, 23, 42, 0.10);
+      --subtle: #98a2b3;
+      --accent: #4f5bd5;
+      --accent-hover: #4350c4;
+      --accent-soft: #eef0fd;
+      --accent-text: #3b47b8;
+      --green: #0f9d63;
+      --green-strong: #0b8452;
+      --green-soft: #e7f7ef;
+      --green-border: #bfe8d3;
+      --amber: #b7791f;
+      --amber-soft: #fdf4e3;
+      --red: #d92d20;
+      --red-soft: #fdecea;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+      --shadow-md: 0 8px 24px rgba(16, 24, 40, .08);
+      --shadow-lg: 0 24px 64px rgba(16, 24, 40, .14);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1013;
+        --surface: #15181c;
+        --surface-2: #1b1f24;
+        --surface-3: #242930;
+        --border: #262b32;
+        --border-strong: #353b44;
+        --text: #eef1f5;
+        --muted: #98a1ae;
+        --subtle: #6b7380;
+        --accent: #7380f0;
+        --accent-hover: #8590f4;
+        --accent-soft: rgba(115, 128, 240, .14);
+        --accent-text: #a5aef7;
+        --green: #3ccf91;
+        --green-strong: #2fb87e;
+        --green-soft: rgba(60, 207, 145, .1);
+        --green-border: rgba(60, 207, 145, .28);
+        --amber: #e6b25a;
+        --amber-soft: rgba(230, 178, 90, .12);
+        --red: #f07167;
+        --red-soft: rgba(240, 113, 103, .12);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+        --shadow-md: 0 8px 24px rgba(0, 0, 0, .35);
+        --shadow-lg: 0 24px 64px rgba(0, 0, 0, .5);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
     body {
-      background:
-        radial-gradient(circle at 8% 10%, rgba(91, 91, 214, 0.10), transparent 28%),
-        radial-gradient(circle at 92% 92%, rgba(13, 159, 110, 0.08), transparent 30%),
-        var(--page);
-      color: var(--ink);
-      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    }
-
-    .login-page {
-      padding: 32px;
-    }
-
-    .login-card {
-      width: min(940px, 100%);
-      min-height: 560px;
-      padding: 0;
-      display: grid;
-      grid-template-columns: 1.05fr 0.95fr;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.9);
-      border-radius: 30px;
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: var(--shadow);
-    }
-
-    .login-hero {
-      position: relative;
-      padding: 52px;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
-      overflow: hidden;
-      color: #fff;
-      background:
-        radial-gradient(circle at 75% 15%, rgba(255, 255, 255, 0.22), transparent 28%),
-        linear-gradient(145deg, #3838a8, #6262dc 58%, #7777e8);
-    }
-
-    .login-hero::after {
-      content: "";
-      position: absolute;
-      right: -90px;
-      bottom: -110px;
-      width: 320px;
-      height: 320px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      border-radius: 50%;
-      box-shadow: 0 0 0 42px rgba(255, 255, 255, 0.06), 0 0 0 84px rgba(255, 255, 255, 0.04);
-    }
-
-    .hero-brand,
-    .app-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .brand-mark {
-      width: 42px;
-      height: 42px;
-      display: grid;
-      place-items: center;
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.16);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      font-size: 20px;
-      font-weight: 900;
-    }
-
-    .hero-brand strong {
-      font-size: 16px;
-      letter-spacing: -0.01em;
-    }
-
-    .hero-copy {
-      position: relative;
-      z-index: 1;
-      max-width: 330px;
-    }
-
-    .hero-copy h1 {
-      margin: 0 0 18px;
-      color: #fff;
-      font-size: clamp(34px, 4vw, 48px);
-      line-height: 1.08;
-      letter-spacing: -0.055em;
-    }
-
-    .hero-copy p {
       margin: 0;
-      color: rgba(255, 255, 255, 0.76);
-      font-size: 15px;
-      line-height: 1.75;
-    }
-
-    .hero-feature {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      color: rgba(255, 255, 255, 0.82);
-      font-size: 13px;
-    }
-
-    .hero-feature span {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: #6ee7b7;
-      box-shadow: 0 0 0 6px rgba(110, 231, 183, 0.14);
-    }
-
-    .login-form-panel {
-      padding: 58px 52px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-
-    .eyebrow {
-      margin-bottom: 10px;
-      color: var(--accent);
-      font-size: 12px;
-      font-weight: 800;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-    }
-
-    .login-form-panel h2 {
-      margin: 0 0 10px;
-      font-size: 30px;
-      line-height: 1.2;
-      letter-spacing: -0.04em;
-    }
-
-    .login-form-panel > p {
-      margin: 0 0 30px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.65;
-    }
-
-    .form-group {
-      margin-bottom: 17px;
-    }
-
-    .form-group label {
-      margin-bottom: 9px;
-      color: #344054;
-      font-size: 13px;
-      font-weight: 750;
-    }
-
-    .form-group input {
-      height: 52px;
-      border-color: #dfe2ea;
-      border-radius: 14px;
-      background: #fbfcfe;
-    }
-
-    .form-group input:focus {
-      border-color: var(--accent);
-      background: #fff;
-      box-shadow: 0 0 0 4px rgba(91, 91, 214, 0.10);
-    }
-
-    .btn {
-      border-radius: 12px;
-    }
-
-    .btn-primary {
-      background: var(--accent);
-      box-shadow: 0 12px 24px rgba(91, 91, 214, 0.22);
-    }
-
-    .btn-primary:hover {
-      background: var(--accent-dark);
-    }
-
-    .admin-link {
-      margin-top: 22px;
-      text-align: center;
-      font-size: 13px;
-    }
-
-    .admin-link a {
-      color: var(--muted);
-      text-decoration: none;
-      font-weight: 700;
-    }
-
-    .app {
-      background: var(--page);
-    }
-
-    .topbar {
-      height: 74px;
-      padding: 0 24px;
-      border-color: var(--line);
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(20px);
-    }
-
-    .app-brand .brand-mark {
-      width: 40px;
-      height: 40px;
-      color: #fff;
-      border: none;
-      background: linear-gradient(145deg, var(--accent), #7777e8);
-      box-shadow: 0 8px 20px rgba(91, 91, 214, 0.20);
-    }
-
-    .brand-title {
-      font-size: 17px;
-      letter-spacing: -0.025em;
-    }
-
-    .brand-subtitle {
-      max-width: 300px;
+      background: var(--bg);
+      color: var(--text);
       overflow: hidden;
-      color: var(--muted);
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      -webkit-font-smoothing: antialiased;
     }
+    button, input { font: inherit; color: inherit; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .hidden { display: none !important; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 8px; border: 2px solid transparent; background-clip: padding-box; }
+    svg.icon { width: 16px; height: 16px; flex: 0 0 auto; }
 
-    .top-actions {
-      gap: 8px;
-    }
-
-    .status-pill {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 12px;
-      color: #475467;
-      background: #f2f4f7;
-      font-size: 12px;
-    }
-
-    .status-pill::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--success);
-      box-shadow: 0 0 0 4px rgba(13, 159, 110, 0.12);
-    }
-
-    .layout {
-      grid-template-columns: 410px minmax(0, 1fr);
-    }
-
-    .sidebar {
-      border-color: var(--line);
-      background: rgba(250, 251, 253, 0.94);
-      backdrop-filter: blur(18px);
-    }
-
-    .sidebar-head {
-      padding: 18px 18px 14px;
-      display: block;
-      border-color: var(--line);
-      background: rgba(255, 255, 255, 0.72);
-    }
-
-    .sidebar-title-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-
-    .sidebar-title {
-      font-size: 16px;
-      font-weight: 820;
-      letter-spacing: -0.025em;
-    }
-
-    .mail-count {
-      padding: 4px 8px;
-      color: var(--muted);
-      border: 1px solid var(--line);
-      border-radius: 999px;
-      background: #fff;
-      font-size: 11px;
-      font-weight: 750;
-    }
-
-    .sidebar-controls {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .filter-tabs {
-      display: inline-flex;
-      padding: 4px;
-      border-radius: 12px;
-      background: #eef0f5;
-    }
-
-    .filter-tab {
-      border: none;
-      padding: 8px 12px;
-      border-radius: 9px;
-      color: var(--muted);
+    /* ---------- Buttons ---------- */
+    .btn {
+      height: 36px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
       background: transparent;
       cursor: pointer;
-      font-size: 12px;
-      font-weight: 750;
+      font-size: 13px; font-weight: 600;
+      white-space: nowrap;
+      transition: background-color .15s, border-color .15s, color .15s;
     }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { opacity: .6; cursor: progress; }
+    .btn-secondary { border-color: var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
+    .btn-secondary:hover { background: var(--surface-2); border-color: var(--border-strong); }
+    .btn-ghost { color: var(--muted); }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--text); }
+    .btn-icon { width: 36px; padding: 0; }
+    .btn-block { width: 100%; height: 44px; font-size: 14px; }
 
-    .filter-tab.active {
-      color: var(--ink);
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+    /* ---------- Login ---------- */
+    .login-page {
+      height: 100dvh;
+      overflow: auto;
+      display: flex; align-items: center; justify-content: center;
+      padding: 24px;
+      background:
+        radial-gradient(1200px 600px at 10% -10%, var(--accent-soft), transparent 60%),
+        radial-gradient(900px 500px at 110% 110%, var(--green-soft), transparent 60%),
+        var(--bg);
     }
-
-    .sidebar-actions {
-      display: flex;
-      gap: 7px;
+    .login-card {
+      width: min(420px, 100%);
+      padding: 36px 32px 28px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
     }
-
-    .sidebar-actions .btn {
-      padding: 9px 11px;
-      font-size: 12px;
+    .brand-mark {
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      border-radius: 13px;
+      background: linear-gradient(140deg, var(--accent), #8b6cf0);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(79, 91, 213, .28);
     }
-
-    .btn-success {
-      color: var(--accent-dark);
-      background: var(--accent-soft);
-    }
-
-    .btn-success:hover {
-      background: #dfdfff;
-    }
-
-    .mail-list {
-      padding: 12px 14px 24px;
-    }
-
-    .mail-item {
-      margin-bottom: 9px;
-      padding: 15px;
-      border-color: transparent;
-      border-radius: 16px;
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow: 0 3px 12px rgba(15, 23, 42, 0.045);
-    }
-
-    .mail-item:hover {
-      border-color: #d9d9ff;
-      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.075);
-    }
-
-    .mail-item.active {
-      border-color: #b7b7f5;
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(91, 91, 214, 0.10), 0 12px 25px rgba(15, 23, 42, 0.07);
-    }
-
-    .mail-card-top,
-    .mail-card-bottom {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-    }
-
-    .mail-subject {
-      margin: 0;
+    .brand-mark svg { width: 22px; height: 22px; }
+    .login-card h1 { margin: 22px 0 6px; font-size: 24px; line-height: 1.25; letter-spacing: -.02em; }
+    .login-card .lead { margin: 0 0 26px; color: var(--muted); font-size: 14px; line-height: 1.6; }
+    .field { margin-bottom: 16px; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+    .control {
+      width: 100%; height: 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 13px;
+      background: var(--surface);
       font-size: 14px;
-      line-height: 1.4;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
     }
+    .control::placeholder { color: var(--subtle); }
+    .control:hover { border-color: var(--border-strong); }
+    .control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    .login-card .btn-block { margin-top: 6px; }
+    .error {
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      background: var(--red-soft);
+      color: var(--red);
+      font-size: 13px; line-height: 1.5;
+    }
+    .features { margin: 26px 0 0; padding: 18px 0 0; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 8px 16px; list-style: none; color: var(--muted); font-size: 12px; }
+    .features li { display: flex; align-items: center; gap: 6px; }
+    .features li::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .admin-link { margin-top: 18px; text-align: center; font-size: 12.5px; }
+    .admin-link a { color: var(--muted); text-decoration: none; font-weight: 600; }
+    .admin-link a:hover { color: var(--accent); }
 
-    .code-badge {
-      flex-shrink: 0;
-      padding: 4px 7px;
-      color: var(--success);
-      border-radius: 7px;
-      background: var(--success-soft);
-      font-size: 10px;
-      font-weight: 800;
+    /* ---------- App ---------- */
+    .app { height: 100dvh; display: flex; flex-direction: column; }
+    .topbar {
+      height: 64px; flex: 0 0 64px;
+      padding: 0 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
     }
+    .app-brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .app-brand .brand-mark { width: 34px; height: 34px; border-radius: 10px; box-shadow: 0 6px 16px rgba(79, 91, 213, .25); }
+    .app-brand .brand-mark svg { width: 18px; height: 18px; }
+    .brand-title { font-size: 15px; font-weight: 700; letter-spacing: -.01em; }
+    .brand-subtitle { margin-top: 2px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font: 12px var(--mono); }
+    .top-actions { display: flex; align-items: center; gap: 8px; }
+    .status-pill {
+      height: 30px; padding: 0 12px;
+      display: inline-flex; align-items: center; gap: 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface-2);
+      color: var(--muted);
+      font-size: 12px; font-weight: 600;
+    }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); animation: pulse 2s infinite; }
+    .status-pill.fast { color: var(--green); border-color: var(--green-border); background: var(--green-soft); }
+    .status-pill.fast .live-dot { animation-duration: .8s; }
+    @keyframes pulse { 50% { opacity: .4; } }
 
-    .mail-meta {
-      margin: 7px 0 0;
-      font-size: 11px;
+    .layout { flex: 1; min-height: 0; display: grid; grid-template-columns: 400px minmax(0, 1fr); }
+    .sidebar { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: var(--surface); }
+    .sidebar-head { padding: 16px 18px 14px; border-bottom: 1px solid var(--border); }
+    .sidebar-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .sidebar-title { font-size: 15px; font-weight: 700; }
+    .mail-count { height: 22px; padding: 0 9px; display: inline-flex; align-items: center; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11.5px; font-weight: 650; }
+    .sidebar-controls { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .filter-tabs { display: inline-flex; padding: 3px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--border); }
+    .filter-tab {
+      height: 28px; padding: 0 12px;
+      border: 0; border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12.5px; font-weight: 600;
     }
+    .filter-tab.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+    .sidebar-actions { display: flex; gap: 6px; }
+    .sidebar-actions .btn { height: 34px; padding: 0 11px; font-size: 12.5px; }
+    .btn-boost { border-color: var(--green-border); background: var(--green-soft); color: var(--green); }
+    .btn-boost:hover { border-color: var(--green); }
 
-    .mail-preview {
-      margin-top: 10px;
-      color: #667085;
-      font-size: 12px;
-      -webkit-line-clamp: 2;
+    .mail-list { flex: 1; min-height: 0; overflow: auto; padding: 10px; }
+    .mail-item {
+      margin-bottom: 6px;
+      padding: 13px 14px;
+      border: 1px solid transparent;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background-color .12s, border-color .12s;
     }
+    .mail-item:hover { background: var(--surface-2); }
+    .mail-item.active { background: var(--accent-soft); border-color: var(--accent); }
+    .mail-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .mail-subject { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13.5px; font-weight: 650; line-height: 1.4; }
+    .mail-time { flex: 0 0 auto; color: var(--subtle); font-size: 11.5px; line-height: 1.6; }
+    .mail-meta { margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 12px; }
+    .mail-preview { margin-top: 6px; color: var(--muted); font-size: 12px; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
     .code-box {
-      margin: 12px 0 0;
-      padding: 11px 12px;
-      color: #067647;
-      border: 1px solid #cceedd;
-      border-radius: 12px;
-      background: linear-gradient(135deg, #edfbf4, #f5fdf9);
-      font-size: 20px;
-      letter-spacing: 0.12em;
+      margin-top: 10px;
+      padding: 8px 8px 8px 14px;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      border: 1px solid var(--green-border);
+      border-radius: 10px;
+      background: var(--green-soft);
     }
-
-    .copy-small {
-      padding: 7px 10px;
+    .code-value { color: var(--green); font: 750 21px/1.2 var(--mono); letter-spacing: .14em; overflow-wrap: anywhere; }
+    .copy-code {
+      height: 32px; padding: 0 12px;
+      display: inline-flex; align-items: center; gap: 6px;
+      border: 0; border-radius: 7px;
+      background: var(--green);
       color: #fff;
-      border-radius: 8px;
-      background: var(--success);
-      font-weight: 750;
+      cursor: pointer;
+      font-size: 12.5px; font-weight: 650;
+      flex: 0 0 auto;
+      transition: background-color .15s;
     }
+    .copy-code:hover { background: var(--green-strong); }
+    .copy-code.done { background: var(--accent); }
+    .code-box.large { padding: 10px 10px 10px 18px; max-width: 440px; }
+    .code-box.large .code-value { font-size: 28px; }
+    .code-box.large .copy-code { height: 38px; padding: 0 16px; font-size: 13px; }
 
-    .list-empty {
-      min-height: 280px;
-      padding: 44px 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-    }
+    .list-empty, .loading { padding: 48px 24px; text-align: center; color: var(--muted); font-size: 13px; }
+    .list-empty strong { display: block; margin-bottom: 6px; color: var(--text); font-size: 14px; }
+    .list-empty span { display: block; max-width: 250px; margin: 0 auto; font-size: 12.5px; line-height: 1.6; }
+    .empty-icon { width: 52px; height: 52px; margin: 0 auto 14px; display: grid; place-items: center; border-radius: 16px; background: var(--accent-soft); color: var(--accent); }
+    .empty-icon svg { width: 24px; height: 24px; }
+    .loading::before { content: ""; display: block; width: 22px; height: 22px; margin: 0 auto 12px; border: 2.5px solid var(--surface-3); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    .empty-icon {
-      width: 54px;
-      height: 54px;
-      margin-bottom: 16px;
-      display: grid;
-      place-items: center;
-      color: var(--accent);
-      border-radius: 18px;
-      background: var(--accent-soft);
-      font-size: 24px;
-    }
+    .content { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--bg); }
+    .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 30px; text-align: center; color: var(--muted); }
+    .empty strong { margin-bottom: 6px; color: var(--text); font-size: 15px; }
+    .empty span { font-size: 13px; }
+    .mail-detail { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .detail-head { flex: 0 0 auto; padding: 20px 24px; display: flex; gap: 10px; align-items: flex-start; border-bottom: 1px solid var(--border); background: var(--surface); }
+    .detail-main { min-width: 0; flex: 1; }
+    .detail-title { margin-bottom: 10px; font-size: 19px; font-weight: 700; line-height: 1.4; letter-spacing: -.01em; overflow-wrap: anywhere; }
+    .detail-info { display: flex; flex-wrap: wrap; gap: 6px 18px; color: var(--muted); font-size: 12.5px; }
+    .detail-info span { overflow-wrap: anywhere; }
+    .detail-info b { color: var(--subtle); font-weight: 600; margin-right: 4px; }
+    .detail-code { margin-top: 14px; }
+    .detail-code .code-box { margin-top: 0; }
+    .detail-body { flex: 1; min-height: 0; padding: 16px; }
+    .mail-frame { width: 100%; height: 100%; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; color-scheme: light; box-shadow: var(--shadow-sm); }
+    .back-btn { display: none; }
 
-    .list-empty strong {
-      margin-bottom: 7px;
-      font-size: 14px;
+    .toast {
+      position: fixed; z-index: 50;
+      left: 50%; bottom: 28px;
+      transform: translate(-50%, 12px);
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: var(--text);
+      color: var(--bg);
+      font-size: 13px; font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s, transform .18s;
     }
-
-    .list-empty span {
-      max-width: 230px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.6;
-    }
-
-    .content {
-      background: #f4f5f8;
-    }
-
-    .empty {
-      padding: 30px;
-      flex-direction: column;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .empty strong {
-      margin-bottom: 8px;
-      color: #344054;
-      font-size: 16px;
-    }
-
-    .empty span {
-      font-size: 13px;
-    }
-
-    .detail-head {
-      padding: 22px 28px 20px;
-      border-color: var(--line);
-    }
-
-    .detail-title {
-      margin-bottom: 14px;
-      font-size: 22px;
-      line-height: 1.35;
-    }
-
-    .detail-info {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 7px 18px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    .detail-code {
-      max-width: 420px;
-      margin-top: 14px;
-    }
-
-    .detail-code .code-box {
-      margin: 0;
-    }
-
-    .detail-body {
-      padding: 18px 20px 20px;
-    }
-
-    .mail-frame {
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      box-shadow: 0 12px 35px rgba(15, 23, 42, 0.07);
-    }
-
-    .error {
-      color: var(--danger);
-    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
 
     @media (max-width: 900px) {
-      .login-card {
-        width: min(520px, 100%);
-        min-height: auto;
-        grid-template-columns: 1fr;
-      }
-
-      .login-hero {
-        min-height: 210px;
-        padding: 30px;
-      }
-
-      .hero-copy h1 {
-        margin-top: 35px;
-        font-size: 32px;
-      }
-
-      .hero-feature {
-        display: none;
-      }
-
-      .login-form-panel {
-        padding: 34px 30px 38px;
-      }
-
-      .topbar {
-        height: 66px;
-        padding: 0 14px;
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .status-pill {
-        display: none;
-      }
-
-      .layout {
-        grid-template-columns: 1fr;
-      }
-
-      .sidebar {
-        height: 44vh;
-      }
-
-      .content {
-        height: 56vh;
-      }
-
-      .detail-head {
-        padding: 16px 18px;
-      }
-
-      .detail-title {
-        font-size: 18px;
-      }
-
-      .detail-body {
-        padding: 10px;
-      }
+      .layout { grid-template-columns: 1fr; position: relative; }
+      .sidebar, .content { position: absolute; inset: 0; border-right: 0; }
+      .content { display: none; }
+      .app.detail-open .sidebar { display: none; }
+      .app.detail-open .content { display: flex; }
+      .back-btn { display: inline-flex; margin-left: -8px; }
+      .topbar { padding: 0 14px; }
+      .status-pill .pill-text { display: none; }
+      .status-pill { width: 30px; padding: 0; justify-content: center; }
+      .detail-head { padding: 14px; }
+      .detail-title { font-size: 16px; }
+      .detail-body { padding: 0; }
+      .mail-frame { border: 0; border-radius: 0; box-shadow: none; }
     }
 
-    @media (max-width: 560px) {
-      .login-page {
-        padding: 14px;
-      }
-
-      .login-hero {
-        display: none;
-      }
-
-      .login-card {
-        border-radius: 22px;
-      }
-
-      .login-form-panel {
-        padding: 36px 24px;
-      }
-
-      .brand-subtitle {
-        max-width: 170px;
-      }
-
-      .sidebar-controls {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .filter-tabs {
-        display: flex;
-      }
-
-      .filter-tab {
-        flex: 1;
-      }
-
-      .sidebar-actions .btn {
-        flex: 1;
-      }
+    @media (max-width: 480px) {
+      .login-page { padding: 16px; align-items: flex-start; padding-top: 10vh; }
+      .login-card { padding: 28px 22px 22px; }
+      .brand-subtitle { max-width: 170px; }
+      .sidebar-controls { flex-direction: column; align-items: stretch; }
+      .filter-tabs { display: flex; }
+      .filter-tab { flex: 1; }
+      .sidebar-actions .btn { flex: 1; }
+      .code-box.large .code-value { font-size: 24px; }
     }
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2 4.5 13.5H11L10 22l8.5-11.5H12L13 2Z"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M17 6l3 3M14 9l2 2"/></symbol>
+  </svg>
+
   <div id="loginPage" class="login-page">
     <div class="login-card">
-      <section class="login-hero">
-        <div class="hero-brand">
-          <div class="brand-mark">M</div>
-          <strong>Mailroom</strong>
-        </div>
-        <div class="hero-copy">
-          <h1>验证码，<br />一眼找到。</h1>
-          <p>自动筛选验证码邮件，减少无关内容干扰。新邮件到达后，无需反复翻找正文。</p>
-        </div>
-        <div class="hero-feature"><span></span>安全连接 · 自动刷新 · 一键复制</div>
-      </section>
+      <div class="brand-mark"><svg><use href="#i-shield"/></svg></div>
+      <h1>登录验证码收件箱</h1>
+      <p class="lead">使用邮箱账号和密码连接收件箱，自动筛出验证码，一键复制。</p>
 
-      <section class="login-form-panel">
-        <div class="eyebrow">Secure mailbox</div>
-        <h2>登录邮箱</h2>
-        <p>使用邮箱账号和密码连接收件箱。登录信息仅用于本次会话。</p>
+      <div class="field">
+        <label for="emailInput">邮箱账号</label>
+        <input id="emailInput" class="control" type="email" placeholder="user@edu.zitw.de" autocomplete="username" />
+      </div>
 
-        <div class="form-group">
-          <label for="emailInput">邮箱账号</label>
-          <input id="emailInput" type="email" placeholder="user@edu.zitw.de" autocomplete="username" />
-        </div>
+      <div class="field">
+        <label for="passwordInput">邮箱密码</label>
+        <input id="passwordInput" class="control" type="password" placeholder="请输入邮箱密码" autocomplete="current-password" />
+      </div>
 
-        <div class="form-group">
-          <label for="passwordInput">邮箱密码</label>
-          <input id="passwordInput" type="password" placeholder="请输入邮箱密码" autocomplete="current-password" />
-        </div>
+      <button id="loginBtn" class="btn btn-primary btn-block">登录邮箱</button>
+      <div id="loginError" class="error hidden"></div>
 
-        <button id="loginBtn" class="btn btn-primary">登录邮箱</button>
-        <div class="admin-link"><a href="/admin">管理员登录</a></div>
-        <div id="loginError" class="error hidden"></div>
-      </section>
+      <ul class="features">
+        <li>自动识别验证码</li>
+        <li>新邮件自动刷新</li>
+        <li>仅保留本次会话</li>
+      </ul>
+      <div class="admin-link"><a href="/admin">管理员登录</a></div>
     </div>
   </div>
 
   <div id="appPage" class="app hidden">
     <div class="topbar">
       <div class="app-brand">
-        <div class="brand-mark">M</div>
-        <div class="brand">
+        <div class="brand-mark"><svg><use href="#i-shield"/></svg></div>
+        <div style="min-width: 0;">
           <div class="brand-title">验证码收件箱</div>
           <div id="userEmail" class="brand-subtitle"></div>
         </div>
       </div>
 
       <div class="top-actions">
-        <div id="pollStatus" class="status-pill">快速刷新中</div>
-        <button id="logoutBtn" class="btn btn-light">退出登录</button>
+        <div id="pollStatus" class="status-pill" title="刷新频率"><span class="live-dot"></span><span class="pill-text">普通模式 · 10 秒刷新</span></div>
+        <button id="logoutBtn" class="btn btn-ghost btn-icon" title="退出登录" aria-label="退出登录"><svg class="icon"><use href="#i-logout"/></svg></button>
       </div>
     </div>
 
@@ -1077,47 +393,52 @@
             <div id="mailCount" class="mail-count">0 封</div>
           </div>
           <div class="sidebar-controls">
-            <div class="filter-tabs" aria-label="邮件筛选">
-              <button id="codeFilterBtn" class="filter-tab active" type="button">验证码</button>
-              <button id="allFilterBtn" class="filter-tab" type="button">全部邮件</button>
+            <div class="filter-tabs" role="tablist" aria-label="邮件筛选">
+              <button id="codeFilterBtn" class="filter-tab active" type="button" role="tab">验证码</button>
+              <button id="allFilterBtn" class="filter-tab" type="button" role="tab">全部邮件</button>
             </div>
             <div class="sidebar-actions">
-              <button id="waitCodeBtn" class="btn btn-success">加速刷新</button>
-              <button id="refreshBtn" class="btn btn-light">刷新</button>
+              <button id="waitCodeBtn" class="btn btn-boost" title="接下来 2 分钟每 2 秒刷新一次"><svg class="icon"><use href="#i-bolt"/></svg>加速</button>
+              <button id="refreshBtn" class="btn btn-secondary" title="立即刷新"><svg class="icon"><use href="#i-refresh"/></svg>刷新</button>
             </div>
           </div>
         </div>
 
         <div id="mailList" class="mail-list">
-          <div class="loading">正在加载邮件...</div>
+          <div class="loading">正在加载邮件…</div>
         </div>
       </aside>
 
       <main class="content">
         <div id="emptyState" class="empty">
-          <div class="empty-icon">✦</div>
+          <div class="empty-icon"><svg><use href="#i-mail"/></svg></div>
           <strong>选择一封邮件</strong>
           <span>邮件内容会在这里显示</span>
         </div>
 
         <div id="mailDetail" class="mail-detail hidden">
           <div class="detail-head">
-            <div id="detailTitle" class="detail-title"></div>
-            <div class="detail-info">
-              <div id="detailFrom"></div>
-              <div id="detailTo"></div>
-              <div id="detailDate"></div>
+            <button id="backBtn" class="btn btn-ghost btn-icon back-btn" aria-label="返回收件箱"><svg class="icon"><use href="#i-back"/></svg></button>
+            <div class="detail-main">
+              <div id="detailTitle" class="detail-title"></div>
+              <div class="detail-info">
+                <span id="detailFrom"></span>
+                <span id="detailTo"></span>
+                <span id="detailDate"></span>
+              </div>
+              <div id="detailCodeWrap" class="detail-code hidden"></div>
             </div>
-            <div id="detailCodeWrap" class="detail-code hidden"></div>
           </div>
 
           <div class="detail-body">
-            <iframe id="mailFrame" class="mail-frame" sandbox=""></iframe>
+            <iframe id="mailFrame" class="mail-frame" sandbox="" title="邮件正文"></iframe>
           </div>
         </div>
       </main>
     </div>
   </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script>
     const API = "";
@@ -1129,6 +450,7 @@
     let activeFilter = "codes";
     let pollTimer = null;
     let fastUntil = 0;
+    let toastTimer = null;
 
     const loginPage = document.getElementById("loginPage");
     const appPage = document.getElementById("appPage");
@@ -1145,6 +467,9 @@
     const refreshBtn = document.getElementById("refreshBtn");
     const logoutBtn = document.getElementById("logoutBtn");
     const pollStatus = document.getElementById("pollStatus");
+    const pollText = pollStatus.querySelector(".pill-text");
+    const backBtn = document.getElementById("backBtn");
+    const toastEl = document.getElementById("toast");
 
     const emptyState = document.getElementById("emptyState");
     const mailDetail = document.getElementById("mailDetail");
@@ -1154,6 +479,8 @@
     const detailDate = document.getElementById("detailDate");
     const detailCodeWrap = document.getElementById("detailCodeWrap");
     const mailFrame = document.getElementById("mailFrame");
+
+    const isMobile = () => window.matchMedia("(max-width: 900px)").matches;
 
     function showLogin() {
       loginPage.classList.remove("hidden");
@@ -1176,6 +503,13 @@
       loginError.classList.add("hidden");
     }
 
+    function showToast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1800);
+    }
+
     async function request(path, options = {}) {
       const headers = options.headers || {};
       headers["Content-Type"] = headers["Content-Type"] || "application/json";
@@ -1192,7 +526,9 @@
       const data = await res.json().catch(() => ({}));
 
       if (!res.ok || data.success === false) {
-        throw new Error(data.detail || data.message || "请求失败");
+        const err = new Error(data.detail || data.message || "请求失败");
+        err.status = res.status;
+        throw err;
       }
 
       return data;
@@ -1209,23 +545,59 @@
 
     function formatDate(value) {
       if (!value) return "";
-      try {
-        const d = new Date(value);
-        if (!isNaN(d.getTime())) {
-          return d.toLocaleString();
-        }
-      } catch (e) {}
-      return value;
+      const d = new Date(value);
+      return isNaN(d.getTime()) ? value : d.toLocaleString("zh-CN", { hour12: false });
     }
 
-    function copyText(text) {
-      navigator.clipboard.writeText(text).catch(() => {
+    function shortDate(value) {
+      if (!value) return "";
+      const d = new Date(value);
+      if (isNaN(d.getTime())) return value;
+      if (d.toDateString() === new Date().toDateString()) {
+        return d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" });
+      }
+      return d.toLocaleDateString("zh-CN", { month: "numeric", day: "numeric" });
+    }
+
+    function copyText(text, button) {
+      const done = () => {
+        showToast("已复制 " + text);
+        if (button) {
+          const original = button.textContent;
+          button.textContent = "已复制";
+          button.classList.add("done");
+          setTimeout(() => {
+            button.textContent = original;
+            button.classList.remove("done");
+          }, 1400);
+        }
+      };
+      navigator.clipboard.writeText(text).then(done).catch(() => {
         const input = document.createElement("textarea");
         input.value = text;
         document.body.appendChild(input);
         input.select();
         document.execCommand("copy");
         input.remove();
+        done();
+      });
+    }
+
+    function codeBoxHtml(code, large) {
+      return `
+        <div class="code-box${large ? " large" : ""}">
+          <span class="code-value">${escapeHtml(code)}</span>
+          <button class="copy-code" type="button" data-code="${escapeHtml(code)}">复制</button>
+        </div>
+      `;
+    }
+
+    function bindCopyButtons(root) {
+      root.querySelectorAll(".copy-code[data-code]").forEach(button => {
+        button.addEventListener("click", event => {
+          event.stopPropagation();
+          copyText(button.dataset.code || "", button);
+        });
       });
     }
 
@@ -1235,18 +607,18 @@
           openMail(item.dataset.uidl || "");
         });
       });
+      bindCopyButtons(mailList);
+    }
 
-      mailList.querySelectorAll(".copy-small[data-code]").forEach(button => {
-        button.addEventListener("click", event => {
-          event.stopPropagation();
-          copyText(button.dataset.code || "");
-        });
-      });
+    function updatePollStatus() {
+      const fast = Date.now() < fastUntil;
+      pollStatus.classList.toggle("fast", fast);
+      pollText.textContent = fast ? "加速模式 · 2 秒刷新" : "普通模式 · 10 秒刷新";
     }
 
     function startFastMode() {
       fastUntil = Date.now() + 120 * 1000;
-      pollStatus.textContent = "验证码模式：2秒刷新";
+      updatePollStatus();
     }
 
     function getPollDelay() {
@@ -1260,14 +632,11 @@
       clearTimeout(pollTimer);
 
       const delay = getPollDelay();
-
-      if (Date.now() >= fastUntil) {
-        pollStatus.textContent = "普通模式：10秒刷新";
-      }
+      updatePollStatus();
 
       pollTimer = setTimeout(async () => {
         await loadMails(false);
-        schedulePoll();
+        if (token) schedulePoll();
       }, delay);
     }
 
@@ -1279,6 +648,7 @@
       selectedUidl = "";
       mailDetail.classList.add("hidden");
       emptyState.classList.remove("hidden");
+      appPage.classList.remove("detail-open");
     }
 
     function renderMailList() {
@@ -1291,11 +661,11 @@
       if (!visibleMails.length) {
         const title = activeFilter === "codes" ? "暂未收到验证码" : "暂无邮件";
         const hint = activeFilter === "codes"
-          ? "系统会自动刷新；普通邮件可在“全部邮件”中查看"
+          ? "页面会自动刷新；普通邮件可在“全部邮件”中查看"
           : "新邮件到达后会自动显示在这里";
         mailList.innerHTML = `
           <div class="list-empty">
-            <div class="empty-icon">✦</div>
+            <div class="empty-icon"><svg><use href="#i-key"/></svg></div>
             <strong>${title}</strong>
             <span>${hint}</span>
           </div>
@@ -1305,31 +675,33 @@
 
       mailList.innerHTML = visibleMails.map(mail => {
         const active = mail.uidl === selectedUidl ? "active" : "";
-        const codeHtml = mail.code ? `
-          <div class="code-box">
-            <span>${escapeHtml(mail.code)}</span>
-            <button class="copy-small" data-code="${escapeHtml(mail.code)}">复制</button>
-          </div>
-        ` : "";
-
         return `
           <div class="mail-item ${active}" data-uidl="${escapeHtml(mail.uidl)}">
             <div class="mail-card-top">
               <div class="mail-subject">${escapeHtml(mail.subject || "无主题")}</div>
-              ${mail.code ? '<span class="code-badge">验证码</span>' : ''}
+              <div class="mail-time">${escapeHtml(shortDate(mail.date))}</div>
             </div>
-            <div class="mail-meta">${escapeHtml(mail.from_name || mail.from || "未知发件人")} · ${escapeHtml(formatDate(mail.date))}</div>
-            ${codeHtml}
-            <div class="mail-preview">${escapeHtml(mail.preview || "")}</div>
+            <div class="mail-meta">${escapeHtml(mail.from_name || mail.from || "未知发件人")}</div>
+            ${mail.code ? codeBoxHtml(mail.code, false) : ""}
+            ${mail.code ? "" : `<div class="mail-preview">${escapeHtml(mail.preview || "")}</div>`}
           </div>
         `;
       }).join("");
       bindMailListEvents();
     }
 
+    async function handleSessionError(err) {
+      if (err.status === 401) {
+        await logout();
+        setError("登录已过期，请重新登录");
+        return true;
+      }
+      return false;
+    }
+
     async function loadMails(showLoading = true) {
       if (showLoading) {
-        mailList.innerHTML = '<div class="loading">正在加载邮件...</div>';
+        mailList.innerHTML = '<div class="loading">正在加载邮件…</div>';
       }
 
       try {
@@ -1342,13 +714,14 @@
         }
         renderMailList();
 
-        if (!selectedUidl && visibleMails.length) {
+        if (!selectedUidl && visibleMails.length && !isMobile()) {
           await openMail(visibleMails[0].uidl);
         } else if (!visibleMails.length) {
           showNoSelection();
         }
       } catch (err) {
-        mailList.innerHTML = `<div class="loading">读取失败：${escapeHtml(err.message)}</div>`;
+        if (await handleSessionError(err)) return;
+        mailList.innerHTML = `<div class="list-empty"><strong>读取失败</strong><span>${escapeHtml(err.message)}</span></div>`;
       }
     }
 
@@ -1358,8 +731,9 @@
 
       emptyState.classList.add("hidden");
       mailDetail.classList.remove("hidden");
+      appPage.classList.add("detail-open");
 
-      detailTitle.textContent = "加载中...";
+      detailTitle.textContent = "加载中…";
       detailFrom.textContent = "";
       detailTo.textContent = "";
       detailDate.textContent = "";
@@ -1371,18 +745,14 @@
         const mail = data.mail;
 
         detailTitle.textContent = mail.subject || "无主题";
-        detailFrom.textContent = "发件人：" + (mail.from_name ? `${mail.from_name} <${mail.from}>` : mail.from || "");
-        detailTo.textContent = "收件人：" + (mail.to_raw || mail.to || "");
-        detailDate.textContent = "时间：" + formatDate(mail.date);
+        detailFrom.innerHTML = "<b>发件人</b>" + escapeHtml(mail.from_name ? `${mail.from_name} <${mail.from}>` : mail.from || "");
+        detailTo.innerHTML = "<b>收件人</b>" + escapeHtml(mail.to_raw || mail.to || "");
+        detailDate.innerHTML = "<b>时间</b>" + escapeHtml(formatDate(mail.date));
 
         if (mail.code) {
           detailCodeWrap.classList.remove("hidden");
-          detailCodeWrap.innerHTML = `
-            <div class="code-box">
-              <span>${escapeHtml(mail.code)}</span>
-              <button class="copy-small" onclick="copyText('${escapeHtml(mail.code)}')">复制验证码</button>
-            </div>
-          `;
+          detailCodeWrap.innerHTML = codeBoxHtml(mail.code, true);
+          bindCopyButtons(detailCodeWrap);
         } else {
           detailCodeWrap.classList.add("hidden");
           detailCodeWrap.innerHTML = "";
@@ -1415,7 +785,7 @@
                 max-width: 100%;
               }
               a {
-                color: #4f46e5;
+                color: #4f5bd5;
               }
             </style>
           </head>
@@ -1423,6 +793,7 @@
           </html>
         `;
       } catch (err) {
+        if (await handleSessionError(err)) return;
         detailTitle.textContent = "读取失败";
         mailFrame.srcdoc = `<pre>${escapeHtml(err.message)}</pre>`;
       }
@@ -1439,7 +810,7 @@
       }
       renderMailList();
 
-      if (!selectedUidl && visibleMails.length) {
+      if (!selectedUidl && visibleMails.length && !isMobile()) {
         await openMail(visibleMails[0].uidl);
       }
     }
@@ -1456,7 +827,7 @@
       }
 
       loginBtn.disabled = true;
-      loginBtn.textContent = "登录中...";
+      loginBtn.textContent = "登录中…";
 
       try {
         const data = await request("/api/user/login", {
@@ -1470,6 +841,7 @@
         sessionStorage.setItem("mail_panel_token", token);
         sessionStorage.setItem("mail_panel_email", currentEmail);
 
+        passwordInput.value = "";
         showApp();
         startFastMode();
         await loadMails(true);
@@ -1483,15 +855,16 @@
     }
 
     async function logout() {
+      clearTimeout(pollTimer);
+      const oldToken = token;
+      token = "";
       try {
         await request("/api/user/logout", {
           method: "POST",
-          body: JSON.stringify({ token })
+          body: JSON.stringify({ token: oldToken })
         });
       } catch (e) {}
 
-      clearTimeout(pollTimer);
-      token = "";
       currentEmail = "";
       selectedUidl = "";
       mails = [];
@@ -1499,6 +872,7 @@
       sessionStorage.removeItem("mail_panel_token");
       sessionStorage.removeItem("mail_panel_email");
 
+      showNoSelection();
       showLogin();
     }
 
@@ -1515,9 +889,15 @@
     refreshBtn.addEventListener("click", () => loadMails(true));
     codeFilterBtn.addEventListener("click", () => setFilter("codes"));
     allFilterBtn.addEventListener("click", () => setFilter("all"));
+    backBtn.addEventListener("click", () => {
+      selectedUidl = "";
+      appPage.classList.remove("detail-open");
+      renderMailList();
+    });
 
     waitCodeBtn.addEventListener("click", async () => {
       startFastMode();
+      showToast("已开启加速：接下来 2 分钟每 2 秒刷新");
       await loadMails(true);
       schedulePoll();
     });

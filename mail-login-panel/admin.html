@@ -2,290 +2,284 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>管理员面板 - Mail Login Panel</title>
   <style>
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
-      background: linear-gradient(135deg, #0f172a, #1e1b4b, #312e81);
-      color: #111827;
+    :root {
+      color-scheme: light dark;
+      --bg: #f6f7f9;
+      --surface: #ffffff;
+      --surface-2: #f3f4f7;
+      --surface-3: #e9ebf0;
+      --border: #e4e7ec;
+      --border-strong: #d0d5dd;
+      --text: #101828;
+      --muted: #667085;
+      --subtle: #98a2b3;
+      --accent: #4f5bd5;
+      --accent-hover: #4350c4;
+      --accent-soft: #eef0fd;
+      --green: #0f9d63;
+      --green-soft: #e7f7ef;
+      --red: #d92d20;
+      --red-soft: #fdecea;
+      --shadow-sm: 0 1px 2px rgba(16, 24, 40, .05);
+      --shadow-lg: 0 24px 64px rgba(16, 24, 40, .14);
+      --radius: 12px;
+      --radius-sm: 8px;
+      --mono: ui-monospace, SFMono-Regular, "JetBrains Mono", Consolas, monospace;
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
     }
 
-    .hidden { display: none !important; }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1013;
+        --surface: #15181c;
+        --surface-2: #1b1f24;
+        --surface-3: #242930;
+        --border: #262b32;
+        --border-strong: #353b44;
+        --text: #eef1f5;
+        --muted: #98a1ae;
+        --subtle: #6b7380;
+        --accent: #7380f0;
+        --accent-hover: #8590f4;
+        --accent-soft: rgba(115, 128, 240, .14);
+        --green: #3ccf91;
+        --green-soft: rgba(60, 207, 145, .1);
+        --red: #f07167;
+        --red-soft: rgba(240, 113, 103, .12);
+        --shadow-sm: 0 1px 2px rgba(0, 0, 0, .3);
+        --shadow-lg: 0 24px 64px rgba(0, 0, 0, .5);
+      }
+    }
 
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+    button, input { font: inherit; color: inherit; }
+    button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .hidden { display: none !important; }
+    svg.icon { width: 16px; height: 16px; flex: 0 0 auto; }
+
+    .btn {
+      height: 36px;
+      border: 1px solid transparent;
+      border-radius: var(--radius-sm);
+      padding: 0 14px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px; font-weight: 600;
+      white-space: nowrap;
+      transition: background-color .15s, border-color .15s, color .15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-secondary { border-color: var(--border); background: var(--surface); box-shadow: var(--shadow-sm); }
+    .btn-secondary:hover { background: var(--surface-2); border-color: var(--border-strong); }
+    .btn-danger { color: var(--muted); }
+    .btn-danger:hover { background: var(--red-soft); color: var(--red); }
+    .btn-block { width: 100%; height: 44px; font-size: 14px; }
+
+    .control {
+      width: 100%; height: 42px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 0 13px;
+      background: var(--surface);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .control::placeholder { color: var(--subtle); }
+    .control:hover { border-color: var(--border-strong); }
+    .control:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+    /* ---------- Login ---------- */
     .login-wrap {
       min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       padding: 24px;
+      background: radial-gradient(1200px 600px at 10% -10%, var(--accent-soft), transparent 60%), var(--bg);
     }
-
-    .card {
-      background: rgba(255,255,255,.94);
-      border-radius: 24px;
-      box-shadow: 0 30px 90px rgba(0,0,0,.28);
-      border: 1px solid rgba(255,255,255,.5);
-    }
-
     .login-card {
-      width: 420px;
-      padding: 34px;
+      width: min(400px, 100%);
+      padding: 34px 30px 26px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
     }
-
-    h1, h2, h3 { margin: 0; letter-spacing: -0.04em; }
-
-    .sub {
-      margin-top: 8px;
-      color: #6b7280;
-      font-size: 14px;
+    .brand-mark {
+      width: 44px; height: 44px;
+      display: grid; place-items: center;
+      border-radius: 13px;
+      background: linear-gradient(140deg, var(--accent), #8b6cf0);
+      color: #fff;
     }
+    .brand-mark svg { width: 22px; height: 22px; }
+    .login-card h1 { margin: 20px 0 6px; font-size: 22px; letter-spacing: -.02em; }
+    .sub { color: var(--muted); font-size: 13.5px; line-height: 1.6; }
+    .field { margin-top: 16px; }
+    .field label { display: block; margin-bottom: 7px; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+    .login-card .btn-block { margin-top: 22px; }
+    .error { margin-top: 14px; padding: 10px 12px; border-radius: var(--radius-sm); background: var(--red-soft); color: var(--red); font-size: 13px; }
+    .back-link { margin-top: 18px; text-align: center; font-size: 12.5px; }
+    .back-link a { color: var(--muted); text-decoration: none; font-weight: 600; }
+    .back-link a:hover { color: var(--accent); }
 
-    label {
-      display: block;
-      margin: 18px 0 8px;
-      font-weight: 700;
-      font-size: 14px;
-      color: #374151;
-    }
-
-    input {
-      width: 100%;
-      height: 48px;
-      border: 1px solid #d1d5db;
-      border-radius: 14px;
-      padding: 0 14px;
-      outline: none;
-      font-size: 15px;
-    }
-
-    input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 4px rgba(99,102,241,.15);
-    }
-
-    button {
-      border: none;
-      border-radius: 14px;
-      padding: 12px 16px;
-      font-weight: 800;
-      cursor: pointer;
-      transition: .2s;
-    }
-
-    .btn-primary {
-      width: 100%;
-      height: 50px;
-      margin-top: 22px;
-      background: #4f46e5;
-      color: white;
-    }
-
-    .btn-primary:hover { background: #4338ca; }
-
-    .btn-light {
-      background: #f3f4f6;
-      color: #111827;
-    }
-
-    .btn-danger {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-
-    .btn-success {
-      background: #10b981;
-      color: white;
-    }
-
-    .error {
-      margin-top: 14px;
-      color: #dc2626;
-      font-size: 14px;
-    }
-
-    .app {
-      min-height: 100vh;
-      padding: 24px;
-    }
-
+    /* ---------- Dashboard ---------- */
     .topbar {
-      max-width: 1180px;
-      margin: 0 auto 18px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      color: white;
+      height: 64px;
+      padding: 0 24px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
     }
+    .topbar-brand { display: flex; align-items: center; gap: 11px; }
+    .topbar-brand .brand-mark { width: 34px; height: 34px; border-radius: 10px; }
+    .topbar-brand .brand-mark svg { width: 18px; height: 18px; }
+    .topbar h1 { margin: 0; font-size: 15px; font-weight: 700; }
+    .topbar .caption { margin-top: 2px; color: var(--muted); font-size: 12px; }
+    .topbar .right { display: flex; gap: 8px; }
 
-    .topbar h1 {
-      font-size: 26px;
-    }
-
-    .topbar .right {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .grid {
-      max-width: 1180px;
-      margin: 0 auto;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-    }
-
-    .panel {
-      padding: 22px;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 12px;
-      margin-top: 18px;
-    }
-
+    .container { max-width: 1180px; margin: 0 auto; padding: 24px; }
+    .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
     .stat {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 18px;
-      padding: 16px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
     }
+    .stat .label { color: var(--muted); font-size: 12.5px; font-weight: 600; }
+    .stat .num { margin-top: 8px; font-size: 28px; font-weight: 750; letter-spacing: -.02em; overflow-wrap: anywhere; }
+    .stat .num.small { font: 650 16px/1.6 var(--mono); margin-top: 12px; }
+    .stat .num .pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 999px; font: 650 13px Inter, ui-sans-serif, system-ui, sans-serif; }
+    .pill-on { background: var(--green-soft); color: var(--green); }
+    .pill-off { background: var(--surface-3); color: var(--muted); }
 
-    .stat .num {
-      font-size: 28px;
-      font-weight: 900;
-      color: #4f46e5;
-    }
-
-    .stat .label {
-      font-size: 13px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-
-    .row {
-      display: flex;
-      gap: 10px;
-      margin-top: 16px;
-    }
-
-    .row input {
-      flex: 1;
-    }
-
-    .list {
-      margin-top: 16px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .item {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .item-main {
-      min-width: 0;
-    }
-
-    .item-title {
-      font-weight: 850;
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .panel {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow-sm);
       overflow: hidden;
-      white-space: nowrap;
-      text-overflow: ellipsis;
     }
+    .panel-head { padding: 18px 20px 14px; border-bottom: 1px solid var(--border); }
+    .panel-head h2 { margin: 0; font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .panel-head .sub { margin-top: 4px; font-size: 12.5px; }
+    .count-badge { min-width: 22px; height: 20px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; background: var(--surface-3); color: var(--muted); font-size: 11px; font-weight: 700; }
+    .row { display: flex; gap: 8px; margin-top: 14px; }
+    .row .control { flex: 1; }
+    .row .btn { height: 42px; }
 
-    .item-sub {
-      margin-top: 4px;
-      color: #6b7280;
-      font-size: 12px;
+    .list { max-height: 520px; overflow: auto; }
+    .item {
+      padding: 13px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      border-bottom: 1px solid var(--border);
     }
+    .item:last-child { border-bottom: 0; }
+    .item-main { min-width: 0; display: flex; align-items: center; gap: 12px; }
+    .item-icon { width: 32px; height: 32px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 9px; background: var(--accent-soft); color: var(--accent); font-weight: 700; font-size: 13px; text-transform: uppercase; }
+    .item-title { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font: 600 13px var(--mono); }
+    .item-sub { margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .item-empty { padding: 36px 20px; text-align: center; color: var(--muted); font-size: 13px; }
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 3px var(--green-soft); flex: 0 0 auto; }
 
     @media (max-width: 900px) {
       .grid { grid-template-columns: 1fr; }
-      .topbar { flex-direction: column; align-items: stretch; gap: 12px; }
       .stat-grid { grid-template-columns: 1fr; }
+      .container { padding: 16px; }
+      .topbar { padding: 0 16px; }
+      .topbar .caption { display: none; }
     }
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+  </svg>
+
   <div id="loginWrap" class="login-wrap">
-    <div class="card login-card">
+    <div class="login-card">
+      <div class="brand-mark"><svg><use href="#i-lock"/></svg></div>
       <h1>管理员登录</h1>
-      <div class="sub">管理邮箱后缀、查看在线用户和 POP 状态。</div>
+      <div class="sub">管理允许登录的邮箱后缀，查看在线用户和 POP 状态。</div>
 
-      <label>管理员账号</label>
-      <input id="username" placeholder="admin" autocomplete="username" />
+      <div class="field">
+        <label for="username">管理员账号</label>
+        <input id="username" class="control" placeholder="admin" autocomplete="username" />
+      </div>
 
-      <label>管理员密码</label>
-      <input id="password" type="password" placeholder="请输入管理员密码" autocomplete="current-password" />
+      <div class="field">
+        <label for="password">管理员密码</label>
+        <input id="password" class="control" type="password" placeholder="请输入管理员密码" autocomplete="current-password" />
+      </div>
 
-      <button id="loginBtn" class="btn-primary">登录管理员面板</button>
+      <button id="loginBtn" class="btn btn-primary btn-block">登录管理员面板</button>
       <div id="err" class="error hidden"></div>
 
-      <div style="margin-top:18px;font-size:13px;">
-        <a href="/" style="color:#4f46e5;text-decoration:none;">返回邮箱登录</a>
-      </div>
+      <div class="back-link"><a href="/">返回邮箱登录</a></div>
     </div>
   </div>
 
-  <div id="app" class="app hidden">
+  <div id="app" class="hidden">
     <div class="topbar">
-      <div>
-        <h1>管理员面板</h1>
-        <div style="opacity:.8;margin-top:4px;">Mail Login Panel</div>
+      <div class="topbar-brand">
+        <div class="brand-mark"><svg><use href="#i-lock"/></svg></div>
+        <div>
+          <h1>管理员面板</h1>
+          <div class="caption">Mail Login Panel</div>
+        </div>
       </div>
       <div class="right">
-        <button class="btn-light" onclick="loadAll()">刷新</button>
-        <button class="btn-light" onclick="logout()">退出</button>
+        <button class="btn btn-secondary" onclick="loadAll()"><svg class="icon"><use href="#i-refresh"/></svg>刷新</button>
+        <button class="btn btn-secondary" onclick="logout()"><svg class="icon"><use href="#i-logout"/></svg>退出</button>
       </div>
     </div>
 
-    <div class="grid">
-      <div class="card panel">
-        <h2>系统状态</h2>
-        <div class="stat-grid">
-          <div class="stat">
-            <div id="onlineCount" class="num">0</div>
-            <div class="label">当前在线人数</div>
-          </div>
-          <div class="stat">
-            <div id="popHost" class="num" style="font-size:18px;">-</div>
-            <div class="label">POP 服务</div>
-          </div>
-          <div class="stat">
-            <div id="popSsl" class="num" style="font-size:18px;">-</div>
-            <div class="label">SSL/TLS</div>
-          </div>
+    <div class="container">
+      <div class="stat-grid">
+        <div class="stat">
+          <div class="label">当前在线</div>
+          <div id="onlineCount" class="num">0</div>
         </div>
-
-        <h3 style="margin-top:24px;">在线用户</h3>
-        <div id="userList" class="list"></div>
+        <div class="stat">
+          <div class="label">POP 服务</div>
+          <div id="popHost" class="num small">-</div>
+        </div>
+        <div class="stat">
+          <div class="label">SSL/TLS</div>
+          <div id="popSsl" class="num">-</div>
+        </div>
       </div>
 
-      <div class="card panel">
-        <h2>邮箱后缀管理</h2>
-        <div class="sub">只允许这些后缀的邮箱登录用户面板。</div>
-
-        <div class="row">
-          <input id="domainInput" placeholder="例如 edu.zitw.de" />
-          <button class="btn-success" onclick="addDomain()">添加</button>
+      <div class="grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>在线用户 <span id="userCount" class="count-badge">0</span></h2>
+            <div class="sub">每 5 秒自动刷新</div>
+          </div>
+          <div id="userList" class="list"></div>
         </div>
 
-        <div id="domainList" class="list"></div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>邮箱后缀 <span id="domainCount" class="count-badge">0</span></h2>
+            <div class="sub">只有这些后缀的邮箱可以登录用户面板。</div>
+            <div class="row">
+              <input id="domainInput" class="control" placeholder="例如 edu.zitw.de" />
+              <button class="btn btn-primary" onclick="addDomain()">添加</button>
+            </div>
+          </div>
+          <div id="domainList" class="list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -317,6 +311,15 @@
       app.classList.remove("hidden");
     }
 
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
     async function api(path, options = {}) {
       const headers = options.headers || {};
       headers["Content-Type"] = headers["Content-Type"] || "application/json";
@@ -337,7 +340,7 @@
 
     function fmt(ts) {
       if (!ts) return "-";
-      return new Date(ts * 1000).toLocaleString();
+      return new Date(ts * 1000).toLocaleString("zh-CN", { hour12: false });
     }
 
     async function login() {
@@ -373,21 +376,27 @@
 
       document.getElementById("onlineCount").textContent = data.online_count;
       document.getElementById("popHost").textContent = data.pop.host + ":" + data.pop.port;
-      document.getElementById("popSsl").textContent = data.pop.ssl ? "开启" : "关闭";
+      document.getElementById("popSsl").innerHTML = data.pop.ssl
+        ? '<span class="pill pill-on">已开启</span>'
+        : '<span class="pill pill-off">未开启</span>';
 
       const users = data.users || [];
       const userList = document.getElementById("userList");
+      document.getElementById("userCount").textContent = users.length;
 
       if (!users.length) {
-        userList.innerHTML = '<div class="item"><div class="item-main"><div class="item-title">暂无在线用户</div></div></div>';
+        userList.innerHTML = '<div class="item-empty">暂无在线用户</div>';
         return;
       }
 
       userList.innerHTML = users.map(u => `
         <div class="item">
           <div class="item-main">
-            <div class="item-title">${u.email}</div>
-            <div class="item-sub">登录：${fmt(u.login_time)} ｜ 最后活跃：${fmt(u.last_active)}</div>
+            <span class="online-dot"></span>
+            <div style="min-width: 0;">
+              <div class="item-title">${escapeHtml(u.email)}</div>
+              <div class="item-sub">登录 ${fmt(u.login_time)} · 最后活跃 ${fmt(u.last_active)}</div>
+            </div>
           </div>
         </div>
       `).join("");
@@ -398,21 +407,29 @@
 
       const domains = data.domains || [];
       const domainList = document.getElementById("domainList");
+      document.getElementById("domainCount").textContent = domains.length;
 
       if (!domains.length) {
-        domainList.innerHTML = '<div class="item"><div class="item-main"><div class="item-title">暂无允许后缀</div></div></div>';
+        domainList.innerHTML = '<div class="item-empty">暂无允许的后缀</div>';
         return;
       }
 
       domainList.innerHTML = domains.map(d => `
         <div class="item">
           <div class="item-main">
-            <div class="item-title">@${d.domain}</div>
-            <div class="item-sub">创建时间：${fmt(d.created_at)}</div>
+            <div class="item-icon">@</div>
+            <div style="min-width: 0;">
+              <div class="item-title">@${escapeHtml(d.domain)}</div>
+              <div class="item-sub">添加于 ${fmt(d.created_at)}</div>
+            </div>
           </div>
-          <button class="btn-danger" onclick="deleteDomain('${d.domain}')">删除</button>
+          <button class="btn btn-danger" data-domain="${escapeHtml(d.domain)}" title="删除"><svg class="icon"><use href="#i-trash"/></svg></button>
         </div>
       `).join("");
+
+      domainList.querySelectorAll("button[data-domain]").forEach(button => {
+        button.addEventListener("click", () => deleteDomain(button.dataset.domain));
+      });
     }
 
     async function loadAll() {
@@ -447,6 +464,9 @@
     document.getElementById("loginBtn").addEventListener("click", login);
     document.getElementById("password").addEventListener("keydown", e => {
       if (e.key === "Enter") login();
+    });
+    document.getElementById("domainInput").addEventListener("keydown", e => {
+      if (e.key === "Enter") addDomain();
     });
 
     if (adminToken) {
